@@ -12,6 +12,11 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+// Chrome DevTools probes this endpoint while inspecting a local app.
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (_req, res) => {
+  res.type('application/json').send('{}');
+});
+
 /**
  * Example Express Rest API endpoints can be defined here.
  * Uncomment and define endpoints as necessary.
