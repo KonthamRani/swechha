@@ -62,6 +62,15 @@
   </section>
 
   <!-- ============================================================
+       LOGO — centered on login, then docks to the top-left HUD
+       corner once the session finishes stabilizing. Same element
+       throughout, so the dock is a pure CSS transform transition.
+       ============================================================ -->
+  <div class="logo-anchor" *ngIf="isLoggedIn()" [class.docked]="logoDocked()">
+    <span class="logo-mark glitch-title" data-text="SWECHA">SWECHA</span>
+  </div>
+
+  <!-- ============================================================
        MAIN SITE
        ============================================================ -->
   <ng-container *ngIf="isLoggedIn()">
@@ -77,7 +86,7 @@
     </div>
 
     <!-- top hud -->
-    <header class="top-hud">
+    <header class="top-hud" [class.docked]="logoDocked()">
       <span class="hud-title">
         SWECHA // <b [class.is-admin]="isAdmin">{{ isAdmin ? 'ADMIN ACCESS' : 'VIEWER ACCESS' }}</b>
       </span>
@@ -93,10 +102,15 @@
         <div class="section-tag">01 // LOGLINE</div>
         <div class="terminal-card wide">
           <ng-container *ngIf="!editing['logline']; else loglineEdit">
-            <p class="body-text">{{ logline }}</p>
+            <p class="body-text">{{ logline() }}</p>
           </ng-container>
           <ng-template #loglineEdit>
-            <textarea class="edit-textarea" [(ngModel)]="logline" rows="5" name="logline"></textarea>
+            <textarea
+              class="edit-textarea"
+              [ngModel]="logline()"
+              (ngModelChange)="logline.set($event)"
+              rows="5"
+              name="logline"></textarea>
           </ng-template>
 
           <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('logline')">
@@ -112,10 +126,15 @@
         <div class="section-tag">02 // SYNOPSIS</div>
         <div class="terminal-card wide">
           <ng-container *ngIf="!editing['synopsis']; else synopsisEdit">
-            <p class="body-text">{{ synopsis }}</p>
+            <p class="body-text">{{ synopsis() }}</p>
           </ng-container>
           <ng-template #synopsisEdit>
-            <textarea class="edit-textarea" [(ngModel)]="synopsis" rows="7" name="synopsis"></textarea>
+            <textarea
+              class="edit-textarea"
+              [ngModel]="synopsis()"
+              (ngModelChange)="synopsis.set($event)"
+              rows="7"
+              name="synopsis"></textarea>
           </ng-template>
 
           <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('synopsis')">
@@ -131,7 +150,7 @@
         <div class="section-tag">03 // EPISODIC SYNOPSIS</div>
 
         <div class="card-grid episodes-grid">
-          <article class="glass-card" *ngFor="let ep of episodes; trackBy: trackById">
+          <article class="glass-card" *ngFor="let ep of episodes(); trackBy: trackById">
             <div class="card-image-wrap portrait">
               <img [src]="ep.image" [alt]="ep.title" />
               <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
@@ -168,7 +187,7 @@
         <div class="section-tag">04 // CHARACTER DETAILS</div>
 
         <div class="card-grid characters-grid">
-          <article class="glass-card" *ngFor="let char of characters; trackBy: trackById">
+          <article class="glass-card" *ngFor="let char of characters(); trackBy: trackById">
             <div class="card-image-wrap portrait round">
               <img [src]="char.photo" [alt]="char.name" />
               <label class="image-edit-btn" *ngIf="isAdmin" title="Change photo">
@@ -207,7 +226,7 @@
         <div class="section-tag">05 // MOOD BOARD</div>
 
         <div class="mood-grid">
-          <figure class="mood-tile" *ngFor="let m of moodBoard; trackBy: trackById">
+          <figure class="mood-tile" *ngFor="let m of moodBoard(); trackBy: trackById">
             <img [src]="m.src" [alt]="m.caption || 'Mood board image'" />
             <figcaption *ngIf="m.caption">{{ m.caption }}</figcaption>
             <button class="tile-remove" *ngIf="isAdmin && editing['moodboard']" (click)="removeMoodImage(m.id)">✕</button>
@@ -232,7 +251,7 @@
         <div class="section-tag">06 // TECHNICALITIES</div>
 
         <div class="tech-stack">
-          <article class="tech-row" *ngFor="let item of technicalities; trackBy: trackById">
+          <article class="tech-row" *ngFor="let item of technicalities(); trackBy: trackById">
             <div class="card-image-wrap portrait tall">
               <img [src]="item.image" [alt]="item.heading" />
               <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
@@ -292,24 +311,29 @@
 
         <div class="terminal-card wide">
           <ng-container *ngIf="!editing['directors']; else notesEdit">
-            <p class="body-text">{{ directorsNotesText }}</p>
+            <p class="body-text">{{ directorsNotesText() }}</p>
           </ng-container>
           <ng-template #notesEdit>
-            <textarea class="edit-textarea" [(ngModel)]="directorsNotesText" rows="6" name="directorsText"></textarea>
+            <textarea
+              class="edit-textarea"
+              [ngModel]="directorsNotesText()"
+              (ngModelChange)="directorsNotesText.set($event)"
+              rows="6"
+              name="directorsText"></textarea>
           </ng-template>
         </div>
 
-        <div class="mood-grid" *ngIf="directorsNotesImages.length || isAdmin">
-          <figure class="mood-tile" *ngFor="let img of directorsNotesImages; trackBy: trackById">
+        <div class="mood-grid" *ngIf="directorsNotesImages().length || isAdmin">
+          <figure class="mood-tile" *ngFor="let img of directorsNotesImages(); trackBy: trackById">
             <img [src]="img.src" [alt]="img.caption || 'Director notes image'" />
             <figcaption *ngIf="img.caption">{{ img.caption }}</figcaption>
             <button class="tile-remove" *ngIf="isAdmin && editing['directors']" (click)="removeDirectorsImage(img.id)">✕</button>
           </figure>
         </div>
 
-        <h4 class="sub-heading" *ngIf="articles.length || isAdmin">Press &amp; Articles</h4>
+        <h4 class="sub-heading" *ngIf="articles().length || isAdmin">Press &amp; Articles</h4>
         <div class="article-grid">
-          <article class="article-card" *ngFor="let a of articles; trackBy: trackById">
+          <article class="article-card" *ngFor="let a of articles(); trackBy: trackById">
             <img [src]="a.image" [alt]="a.title" *ngIf="a.image" />
 
             <ng-container *ngIf="!editing['directors']; else articleEdit">
@@ -353,20 +377,20 @@
 
         <div class="about-layout">
           <div class="card-image-wrap portrait round">
-            <img [src]="aboutMe.photo" alt="Director photo" />
+            <img [src]="aboutMe().photo" alt="Director photo" />
             <label class="image-edit-btn" *ngIf="isAdmin" title="Change photo">
               📷
-              <input type="file" accept="image/*" hidden (change)="onImageChange($event, aboutMe, 'photo')" />
+              <input type="file" accept="image/*" hidden (change)="onImageChange($event, aboutMe(), 'photo')" />
             </label>
           </div>
 
           <div class="about-copy">
             <ng-container *ngIf="!editing['about']; else aboutEdit">
-              <p class="body-text">{{ aboutMe.bio }}</p>
+              <p class="body-text">{{ aboutMe().bio }}</p>
               <div class="link-row">
                 <a
                   class="tech-link"
-                  *ngFor="let l of aboutMe.links"
+                  *ngFor="let l of aboutMe().links"
                   [href]="l.url"
                   target="_blank"
                   rel="noopener noreferrer">
@@ -376,9 +400,14 @@
             </ng-container>
 
             <ng-template #aboutEdit>
-              <textarea class="edit-textarea" [(ngModel)]="aboutMe.bio" rows="6" name="aboutBio"></textarea>
+              <textarea
+                class="edit-textarea"
+                [ngModel]="aboutMe().bio"
+                (ngModelChange)="aboutMe().bio = $event"
+                rows="6"
+                name="aboutBio"></textarea>
 
-              <div class="link-edit-row" *ngFor="let l of aboutMe.links">
+              <div class="link-edit-row" *ngFor="let l of aboutMe().links">
                 <input class="edit-input" [(ngModel)]="l.label" placeholder="Link label" name="aboutLinkLabel{{ l.id }}" />
                 <input class="edit-input" [(ngModel)]="l.url" placeholder="https://…" name="aboutLinkUrl{{ l.id }}" />
                 <button class="btn danger small" (click)="removeAboutLink(l.id)">✕</button>

@@ -5,10 +5,13 @@ import {
   HostListener,
   ViewChild,
   ElementRef,
-  signal
+  signal,
+  effect,
+  inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ContentService, SwechaContent } from './content.service';
 
 /* =========================================================
    DATA MODELS
@@ -72,6 +75,7 @@ export interface AboutLink {
   styleUrl: './app.css'
 })
 export class App implements AfterViewChecked, OnDestroy {
+  private content = inject(ContentService);
 
   /* ---------- AUTH STATE (plain — only ever written inside
      click/submit handlers, so zoneless CD already sees them) ---------- */
@@ -79,13 +83,14 @@ export class App implements AfterViewChecked, OnDestroy {
   password = '';
   isAdmin = false;
 
-  /* ---------- STATE DRIVEN BY setInterval/setTimeout ----------
-     These MUST be signals. A timer callback runs outside any
-     Angular-tracked event, so a plain field write here would
-     silently update the class but never trigger a re-render
-     under zoneless change detection — which is exactly why the
-     loading bar was stuck at 0%. Signal writes always notify
-     Angular's renderer, zoneless or not. */
+  /* ---------- STATE DRIVEN BY setInterval/setTimeout/Firestore ----------
+     These MUST be signals. A timer or network callback runs outside any
+     Angular-tracked event, so a plain field write here would silently
+     update the class but never trigger a re-render under zoneless change
+     detection. Signal writes always notify Angular's renderer, zoneless
+     or not — which is also why the *content* itself (synced live from
+     Firestore, i.e. from other people's browsers) has to live in signals
+     too, not the plain fields the original version used. */
   isLoggedIn = signal(false);
   isLoading = signal(false);
   loadingProgress = signal(0);
@@ -94,7 +99,11 @@ export class App implements AfterViewChecked, OnDestroy {
   scrollProgress = signal(0);
   glitchActive = signal(false);
 
+  /** false = logo sits centered on screen; true = docked into the top-left HUD. */
+  logoDocked = signal(false);
+
   private loadingTimer: any = null;
+  private dockTimer: any = null;
   private readonly loadingStatusSteps = [
     'INITIATING SWECHA INTERFACE',
     'AUTH HANDSHAKE IN PROGRESS',
@@ -142,19 +151,27 @@ export class App implements AfterViewChecked, OnDestroy {
   };
 
   /* =========================================================
-     CONTENT — replace this seed data with your real pitch
-     deck content. Plain component state: edits made by an
-     Admin persist only for the current browser session.
+     CONTENT — now signals. Local seed values below are only the
+     *fallback* shown before the first Firestore snapshot arrives
+     (or if Firestore is unreachable). Once connected, every
+     viewer's copy of these signals is kept in sync by the effect
+     in the constructor. Admin edits are written back to Firestore
+     in saveSection(), which is called when a section's "Done
+     editing" / "SAVE" button is pressed.
      ========================================================= */
 
-  logline = 'A city on the edge of collapse. A platform that promises freedom. ' +
-    'SWECHA follows one operator who discovers the system she trusts is the one erasing her.';
+  logline = signal(
+    'A city on the edge of collapse. A platform that promises freedom. ' +
+      'SWECHA follows one operator who discovers the system she trusts is the one erasing her.'
+  );
 
-  synopsis = 'Set in the near-future sprawl of Bhagyanagaram, SWECHA is a serialized thriller about ' +
-    'surveillance, identity, and the cost of staying logged in. As the city\u2019s last independent network ' +
-    'goes dark, our protagonist must decide whether to burn the system down or become part of it.';
+  synopsis = signal(
+    'Set in the near-future sprawl of Bhagyanagaram, SWECHA is a serialized thriller about ' +
+      'surveillance, identity, and the cost of staying logged in. As the city\u2019s last independent network ' +
+      'goes dark, our protagonist must decide whether to burn the system down or become part of it.'
+  );
 
-  episodes: Episode[] = [
+  episodes = signal<Episode[]>([
     {
       id: 1,
       title: 'EP 01 — WAKE',
@@ -173,9 +190,9 @@ export class App implements AfterViewChecked, OnDestroy {
       text: 'Trust fractures inside the platform as the walls between user and system dissolve.',
       image: 'https://placehold.co/500x700/0a0000/9b35ff?text=EP+03'
     }
-  ];
+  ]);
 
-  characters: CharacterEntry[] = [
+  characters = signal<CharacterEntry[]>([
     {
       id: 1,
       name: 'ARYA NAIR',
@@ -197,24 +214,22 @@ export class App implements AfterViewChecked, OnDestroy {
       description: 'A former operator living off-grid, feeding Arya fragments of the truth from outside the system.',
       photo: 'https://placehold.co/400x500/0a0000/49ff69?text=KABIR'
     }
-  ];
+  ]);
 
-  moodBoard: MoodImage[] = [
+  moodBoard = signal<MoodImage[]>([
     { id: 1, src: 'https://placehold.co/600x400/0a0000/ff163d?text=MOOD+01', caption: 'Neon-soaked skyline' },
     { id: 2, src: 'https://placehold.co/600x400/0a0000/00f7ff?text=MOOD+02', caption: 'Terminal interiors' },
     { id: 3, src: 'https://placehold.co/600x400/0a0000/9b35ff?text=MOOD+03', caption: 'Signal interference' },
     { id: 4, src: 'https://placehold.co/600x400/0a0000/ff2aa8?text=MOOD+04', caption: 'Crowd surveillance' }
-  ];
+  ]);
 
-  technicalities: TechItem[] = [
+  technicalities = signal<TechItem[]>([
     {
       id: 1,
       image: 'https://placehold.co/400x700/0a0000/ff163d?text=TECH+01',
       heading: 'FORMAT',
       text: 'An 8-episode limited series, 30–40 minutes per episode, shot in a hybrid of practical neon lighting and desaturated urban exteriors.',
-      links: [
-        { id: 1, label: 'Series Bible (PDF)', url: 'https://example.com/series-bible' }
-      ]
+      links: [{ id: 1, label: 'Series Bible (PDF)', url: 'https://example.com/series-bible' }]
     },
     {
       id: 2,
@@ -223,17 +238,19 @@ export class App implements AfterViewChecked, OnDestroy {
       text: 'Glitch and scanline motifs are diegetic — every distortion on screen represents the system itself reacting to the story.',
       links: []
     }
-  ];
+  ]);
 
-  directorsNotesText = 'SWECHA started as a question: what happens when the platform meant to protect a city ' +
-    'becomes the thing everyone is afraid of? This project is my attempt to make surveillance feel personal again — ' +
-    'not abstract, not political theatre, just one person realizing the system knows her better than she knows herself.';
+  directorsNotesText = signal(
+    'SWECHA started as a question: what happens when the platform meant to protect a city ' +
+      'becomes the thing everyone is afraid of? This project is my attempt to make surveillance feel personal again — ' +
+      'not abstract, not political theatre, just one person realizing the system knows her better than she knows herself.'
+  );
 
-  directorsNotesImages: MoodImage[] = [
+  directorsNotesImages = signal<MoodImage[]>([
     { id: 1, src: 'https://placehold.co/700x400/0a0000/ff163d?text=SET+PHOTO', caption: 'Location scout, Old City sector' }
-  ];
+  ]);
 
-  articles: Article[] = [
+  articles = signal<Article[]>([
     {
       id: 1,
       title: 'The Rise of Ambient Surveillance Cinema',
@@ -241,17 +258,102 @@ export class App implements AfterViewChecked, OnDestroy {
       link: 'https://example.com/article-1',
       image: 'https://placehold.co/300x180/0a0000/00f7ff?text=ARTICLE'
     }
-  ];
+  ]);
 
-  aboutMe = {
+  aboutMe = signal<{ photo: string; bio: string; links: AboutLink[] }>({
     photo: 'https://placehold.co/400x500/0a0000/ff163d?text=DIRECTOR',
     bio: 'I\u2019m a writer-director working at the intersection of thriller and speculative fiction. SWECHA is my ' +
       'first serialized project, built from years of watching how cities and platforms quietly reshape each other.',
     links: [
       { id: 1, label: 'Portfolio', url: 'https://example.com' },
       { id: 2, label: 'Contact', url: 'mailto:hello@example.com' }
-    ] as AboutLink[]
-  };
+    ]
+  });
+
+  constructor() {
+    // Mirrors Firestore -> local signals for every viewer. Skips a section
+    // while its own admin is mid-edit so a remote update can't clobber
+    // what they're currently typing.
+    effect(() => {
+      const remote = this.content.content();
+      if (!remote) return;
+
+      if (!this.editing['logline'] && remote.logline !== undefined) this.logline.set(remote.logline);
+      if (!this.editing['synopsis'] && remote.synopsis !== undefined) this.synopsis.set(remote.synopsis);
+      if (!this.editing['episodic'] && remote.episodes) this.episodes.set(remote.episodes);
+      if (!this.editing['characters'] && remote.characters) this.characters.set(remote.characters);
+      if (!this.editing['moodboard'] && remote.moodBoard) this.moodBoard.set(remote.moodBoard);
+      if (!this.editing['technicalities'] && remote.technicalities) this.technicalities.set(remote.technicalities);
+      if (!this.editing['directors']) {
+        if (remote.directorsNotesText !== undefined) this.directorsNotesText.set(remote.directorsNotesText);
+        if (remote.directorsNotesImages) this.directorsNotesImages.set(remote.directorsNotesImages);
+        if (remote.articles) this.articles.set(remote.articles);
+      }
+      if (!this.editing['about'] && remote.aboutMe) this.aboutMe.set(remote.aboutMe);
+    });
+
+    // First client to connect seeds Firestore with the local defaults above,
+    // so the site isn't blank for everyone before an admin has saved anything.
+    effect(() => {
+      if (this.content.ready() && !this.content.content()) {
+        this.content.seedIfEmpty(this.snapshotContent());
+      }
+    });
+  }
+
+  /** Builds the full-content object Firestore expects, from current signal values. */
+  private snapshotContent(): SwechaContent {
+    return {
+      logline: this.logline(),
+      synopsis: this.synopsis(),
+      episodes: this.episodes(),
+      characters: this.characters(),
+      moodBoard: this.moodBoard(),
+      technicalities: this.technicalities(),
+      directorsNotesText: this.directorsNotesText(),
+      directorsNotesImages: this.directorsNotesImages(),
+      articles: this.articles(),
+      aboutMe: this.aboutMe()
+    };
+  }
+
+  /** Pushes just the fields for one section up to Firestore. */
+  private saveSection(section: string): void {
+    let partial: Partial<SwechaContent> | null = null;
+    switch (section) {
+      case 'logline':
+        partial = { logline: this.logline() };
+        break;
+      case 'synopsis':
+        partial = { synopsis: this.synopsis() };
+        break;
+      case 'episodic':
+        partial = { episodes: this.episodes() };
+        break;
+      case 'characters':
+        partial = { characters: this.characters() };
+        break;
+      case 'moodboard':
+        partial = { moodBoard: this.moodBoard() };
+        break;
+      case 'technicalities':
+        partial = { technicalities: this.technicalities() };
+        break;
+      case 'directors':
+        partial = {
+          directorsNotesText: this.directorsNotesText(),
+          directorsNotesImages: this.directorsNotesImages(),
+          articles: this.articles()
+        };
+        break;
+      case 'about':
+        partial = { aboutMe: this.aboutMe() };
+        break;
+    }
+    if (partial) {
+      this.content.save(partial).catch(err => console.error('Save failed:', section, err));
+    }
+  }
 
   /* =========================================================
      LIFECYCLE
@@ -272,6 +374,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.loadingTimer) clearInterval(this.loadingTimer);
+    if (this.dockTimer) clearTimeout(this.dockTimer);
     if (this.noiseRafId !== null) cancelAnimationFrame(this.noiseRafId);
     if (this.revealObserver) this.revealObserver.disconnect();
   }
@@ -317,8 +420,10 @@ export class App implements AfterViewChecked, OnDestroy {
 
   logout(): void {
     if (this.loadingTimer) clearInterval(this.loadingTimer);
+    if (this.dockTimer) clearTimeout(this.dockTimer);
     this.isLoggedIn.set(false);
     this.isLoading.set(false);
+    this.logoDocked.set(false);
     this.isAdmin = false;
     this.username = '';
     this.password = '';
@@ -363,7 +468,15 @@ export class App implements AfterViewChecked, OnDestroy {
         setTimeout(() => {
           this.isLoading.set(false);
           this.isLoggedIn.set(true);
+          this.logoDocked.set(false); // logo starts centered, full size
           this.triggerGlitch();
+
+          // Hold the logo centered for a beat, then send it to the HUD
+          // corner — the same beat the reference site's preloader uses
+          // before its mark settles into the nav bar.
+          this.dockTimer = setTimeout(() => {
+            this.logoDocked.set(true);
+          }, 700);
         }, 450);
       }
     }, 220);
@@ -427,47 +540,69 @@ export class App implements AfterViewChecked, OnDestroy {
      GENERIC EDIT / IMAGE HELPERS
      ========================================================= */
   toggleEdit(section: string): void {
-    this.editing[section] = !this.editing[section];
+    const wasEditing = this.editing[section];
+    this.editing[section] = !wasEditing;
+    if (wasEditing) {
+      // Turning edit mode OFF = "Save" for this section.
+      this.saveSection(section);
+    }
   }
 
-  /** Reads a selected local file and writes its data URL onto target[field]. */
+  /** Reads a selected local file, uploads it to Firebase Storage, and writes
+   *  the resulting download URL onto target[field]. Falls back to a local
+   *  base64 preview immediately so the UI doesn't feel stalled during upload. */
   onImageChange(event: Event, target: any, field: string): void {
     const input = event.target as HTMLInputElement;
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
+
     const reader = new FileReader();
     reader.onload = () => {
-      target[field] = reader.result as string;
+      target[field] = reader.result as string; // instant local preview
     };
     reader.readAsDataURL(file);
+
+    this.content
+      .uploadImage(file, field)
+      .then(url => {
+        target[field] = url; // swap in the real, shareable URL
+      })
+      .catch(err => console.error('Image upload failed:', err));
+
     input.value = '';
   }
 
   /* ---------- EPISODES ---------- */
   addEpisode(): void {
-    this.episodes.push({
-      id: this.nextId(),
-      title: 'NEW EPISODE',
-      text: 'Episode description goes here.',
-      image: 'https://placehold.co/500x700/0a0000/ff163d?text=NEW'
-    });
+    this.episodes.update(list => [
+      ...list,
+      {
+        id: this.nextId(),
+        title: 'NEW EPISODE',
+        text: 'Episode description goes here.',
+        image: 'https://placehold.co/500x700/0a0000/ff163d?text=NEW'
+      }
+    ]);
   }
   removeEpisode(id: number): void {
-    this.episodes = this.episodes.filter(e => e.id !== id);
+    this.episodes.update(list => list.filter(e => e.id !== id));
   }
 
   /* ---------- CHARACTERS ---------- */
   addCharacter(): void {
-    this.characters.push({
-      id: this.nextId(),
-      name: 'NEW CHARACTER',
-      role: 'Role',
-      description: 'Character description goes here.',
-      photo: 'https://placehold.co/400x500/0a0000/ff163d?text=NEW'
-    });
+    this.characters.update(list => [
+      ...list,
+      {
+        id: this.nextId(),
+        name: 'NEW CHARACTER',
+        role: 'Role',
+        description: 'Character description goes here.',
+        photo: 'https://placehold.co/400x500/0a0000/ff163d?text=NEW'
+      }
+    ]);
   }
   removeCharacter(id: number): void {
-    this.characters = this.characters.filter(c => c.id !== id);
+    this.characters.update(list => list.filter(c => c.id !== id));
   }
 
   /* ---------- MOOD BOARD ---------- */
@@ -475,33 +610,42 @@ export class App implements AfterViewChecked, OnDestroy {
     const input = event.target as HTMLInputElement;
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
+    const tempId = this.nextId();
+
     const reader = new FileReader();
     reader.onload = () => {
-      this.moodBoard.push({
-        id: this.nextId(),
-        src: reader.result as string,
-        caption: ''
-      });
+      this.moodBoard.update(list => [...list, { id: tempId, src: reader.result as string, caption: '' }]);
     };
     reader.readAsDataURL(file);
+
+    this.content
+      .uploadImage(file, 'moodboard')
+      .then(url => {
+        this.moodBoard.update(list => list.map(m => (m.id === tempId ? { ...m, src: url } : m)));
+      })
+      .catch(err => console.error('Image upload failed:', err));
+
     input.value = '';
   }
   removeMoodImage(id: number): void {
-    this.moodBoard = this.moodBoard.filter(m => m.id !== id);
+    this.moodBoard.update(list => list.filter(m => m.id !== id));
   }
 
   /* ---------- TECHNICALITIES ---------- */
   addTechItem(): void {
-    this.technicalities.push({
-      id: this.nextId(),
-      image: 'https://placehold.co/400x700/0a0000/ff163d?text=NEW',
-      heading: 'NEW SECTION',
-      text: 'Details go here.',
-      links: []
-    });
+    this.technicalities.update(list => [
+      ...list,
+      {
+        id: this.nextId(),
+        image: 'https://placehold.co/400x700/0a0000/ff163d?text=NEW',
+        heading: 'NEW SECTION',
+        text: 'Details go here.',
+        links: []
+      }
+    ]);
   }
   removeTechItem(id: number): void {
-    this.technicalities = this.technicalities.filter(t => t.id !== id);
+    this.technicalities.update(list => list.filter(t => t.id !== id));
   }
   addTechLink(item: TechItem): void {
     item.links.push({ id: this.nextId(), label: 'New Link', url: 'https://example.com' });
@@ -515,39 +659,48 @@ export class App implements AfterViewChecked, OnDestroy {
     const input = event.target as HTMLInputElement;
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
+    const tempId = this.nextId();
+
     const reader = new FileReader();
     reader.onload = () => {
-      this.directorsNotesImages.push({
-        id: this.nextId(),
-        src: reader.result as string,
-        caption: ''
-      });
+      this.directorsNotesImages.update(list => [...list, { id: tempId, src: reader.result as string, caption: '' }]);
     };
     reader.readAsDataURL(file);
+
+    this.content
+      .uploadImage(file, 'directors-notes')
+      .then(url => {
+        this.directorsNotesImages.update(list => list.map(i => (i.id === tempId ? { ...i, src: url } : i)));
+      })
+      .catch(err => console.error('Image upload failed:', err));
+
     input.value = '';
   }
   removeDirectorsImage(id: number): void {
-    this.directorsNotesImages = this.directorsNotesImages.filter(i => i.id !== id);
+    this.directorsNotesImages.update(list => list.filter(i => i.id !== id));
   }
   addArticle(): void {
-    this.articles.push({
-      id: this.nextId(),
-      title: 'New Article',
-      description: 'Article description goes here.',
-      link: 'https://example.com',
-      image: 'https://placehold.co/300x180/0a0000/00f7ff?text=NEW'
-    });
+    this.articles.update(list => [
+      ...list,
+      {
+        id: this.nextId(),
+        title: 'New Article',
+        description: 'Article description goes here.',
+        link: 'https://example.com',
+        image: 'https://placehold.co/300x180/0a0000/00f7ff?text=NEW'
+      }
+    ]);
   }
   removeArticle(id: number): void {
-    this.articles = this.articles.filter(a => a.id !== id);
+    this.articles.update(list => list.filter(a => a.id !== id));
   }
 
   /* ---------- ABOUT ME ---------- */
   addAboutLink(): void {
-    this.aboutMe.links.push({ id: this.nextId(), label: 'New Link', url: 'https://example.com' });
+    this.aboutMe.update(a => ({ ...a, links: [...a.links, { id: this.nextId(), label: 'New Link', url: 'https://example.com' }] }));
   }
   removeAboutLink(id: number): void {
-    this.aboutMe.links = this.aboutMe.links.filter(l => l.id !== id);
+    this.aboutMe.update(a => ({ ...a, links: a.links.filter(l => l.id !== id) }));
   }
 
   /* ---------- MISC ---------- */
