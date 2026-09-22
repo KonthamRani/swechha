@@ -1,29 +1,402 @@
-@if (!isLoggedIn()) {
-  <main class="terminal-login">
-    <div class="scan-frame"></div>
-    <div class="login-top"><span>SYS://SWECHHA</span><span>AUTH NODE 01</span></div>
-    <section class="boot-panel" aria-labelledby="login-heading">
-      <div class="neon-glyph" aria-hidden="true"><span></span><span></span><span></span><i></i><i></i></div>
-      <div class="glitch-logo" id="login-heading" data-text="SWECHHA">SWECHHA</div>
-      <form class="terminal-form" (submit)="$event.preventDefault(); login()">
-        <label for="name">&gt; ENTER IDENTIFIER</label>
-        <div class="terminal-input"><span>user@bhagyanagaram:~$</span><input id="name" type="text" autocomplete="name" placeholder="guest" [value]="userName()" (input)="updateUserName($event)" autofocus /><span class="cursor"></span></div>
-        <button type="submit">[ INITIALIZE SESSION ] <span>&gt;&gt;</span></button>
+<div class="swecha-root">
+
+  <!-- ============================================================
+       LOGIN SCREEN
+       ============================================================ -->
+  <section class="login-screen" *ngIf="!isLoggedIn() && !isLoading()">
+    <div class="bg-vignette"></div>
+    <div class="bg-scanlines"></div>
+
+    <div class="login-card">
+      <h1 class="glitch-title" data-text="SWECHA">SWECHA</h1>
+      <p class="login-sub">SYSTEM ACCESS TERMINAL</p>
+
+      <form (ngSubmit)="login()" class="login-form">
+        <label class="field">
+          <span>Username</span>
+          <input
+            type="text"
+            name="username"
+            [(ngModel)]="username"
+            placeholder="operator id"
+            autocomplete="username" />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input
+            type="password"
+            name="password"
+            [(ngModel)]="password"
+            placeholder="••••••••"
+            autocomplete="current-password" />
+        </label>
+
+        <button type="submit" class="btn primary full">LOGIN</button>
       </form>
-      <p class="access-note">OPEN NETWORK / NO PASSWORD / ALL SKILLS WELCOME</p>
-    </section>
-    <div class="login-bottom"><span>00:00:01:37</span><span>ENCRYPTED STORY BUILD 0.1</span><span>SCROLL TO CONNECT</span></div>
-  </main>
-} @else {
-  <div class="swecha-deck">
-    <header class="terminal-nav"><a href="#origin" class="nav-logo">#<span>SW</span></a><nav><a href="#origin">ORIGIN</a><a href="#platform">PLATFORM</a><a href="#future">FUTURE</a></nav><button type="button" (click)="logout()">LOGOUT <span>//</span></button></header>
-    @if (isEditor()) { <div class="admin-console"><span class="live-dot"></span> ROOT ACCESS // EDIT MODE <button type="button">COMMIT CHANGES</button></div> }
-    <main>
-      <section id="origin" class="story-screen origin-screen"><div class="screen-code">LOGILINE <span>01 / 05</span></div><div class="story-copy"><p class="section-tag">[ INCOMING TRANSMISSION ]</p><h1>The story begins in<br /><strong>BHAGYANAGARAM,</strong></h1><p>a city drowning in chaos after the <em>Boom of AI</em> replaces humans across almost every field of employment.</p><p>Unemployment reaches an all-time high, leaving educated youth without jobs or hope, leading to suicides, murders, protests, and crime across the streets.</p></div><div class="scroll-mark">SCROLL TO DECODE <span>↓</span></div></section>
-      <section class="story-screen launch-screen"><div class="screen-code">LOGILINE <span>02 / 05</span></div><div class="launch-icon"><span></span><span></span><span></span><i></i><i></i></div><div class="story-copy"><p class="section-tag">[ UNKNOWN ORIGIN / 22:47:01 ]</p><h2>Then, an anonymous<br /><strong>techie</strong> launches<br />a revolution.</h2><p>A universal space where anyone can find work or offer their skills. No experience too small. No talent left behind.</p></div></section>
-      <section id="platform" class="story-screen platform-screen"><div class="screen-code">SWECHHA <span>03 / 05</span></div><div class="platform-title"><p class="section-tag">[ THE WORK NETWORK ]</p><h2>One space.<br /><strong>Every skill.</strong></h2></div><div class="service-grid"><span>FOOD DELIVERY</span><span>PICKUP &amp; DROP</span><span>HOME SERVICES</span><span>SOFTWARE SERVICES</span><span>MANUAL LABOUR</span><span>YOUR NEXT MOVE</span></div><p class="platform-note">From food delivery to pickup &amp; drop services. From home services to software services. Even basic labour and manual work.</p></section>
-      <section class="story-screen warning-screen"><div class="screen-code">SYSTEM TRACE <span>04 / 05</span></div><div class="warning-copy"><div class="warning-symbol">!</div><p class="section-tag">[ UNEXPECTED PATTERN DETECTED ]</p><h2>But even the<br />creator <strong>doesn't know</strong></h2><p>that what begins as a solution to unemployment will soon become the foundation of something much larger.</p></div><div class="signal-line"></div></section>
-      <section id="future" class="story-screen future-screen"><div class="screen-code">END OF LOGILINE <span>05 / 05</span></div><p class="section-tag">[ PREDICTION LOCKED ]</p><h2>A<br /><strong>DYSTOPIAN<br />FUTURE...</strong></h2><p class="future-subtitle">The network is alive.<br />The network is watching.</p><div class="error-state"><span class="error-icon">!</span><div><strong>ERROR 404</strong><span>SERVER NOT FOUND.</span><span>PLEASE TRY AGAIN LATER.</span></div></div><a class="restart-link" href="#origin">REPLAY TRANSMISSION <span>↻</span></a><div class="future-footer"><span>SWECHHA / BHAGYANAGARAM</span><span>SESSION TERMINATED_</span></div></section>
+
+      <p class="login-hint">// any credentials grant viewer access</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       LOADING SCREEN
+       ============================================================ -->
+  <section class="loading-screen" *ngIf="isLoading()">
+    <div class="bg-vignette"></div>
+    <div class="bg-scanlines"></div>
+
+    <div class="loading-inner">
+      <h2 class="glitch-title small" data-text="SWECHA">SWECHA</h2>
+      <p class="loading-status">{{ loadingStatusText() }}</p>
+
+      <div class="loading-bar-track">
+        <div class="loading-bar-fill" [style.width.%]="loadingProgress()"></div>
+      </div>
+      <p class="loading-pct">{{ loadingProgress() | number:'1.0-0' }}%</p>
+
+      <div class="boot-feed">
+        <p *ngFor="let line of bootLines()">{{ line }}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       MAIN SITE
+       ============================================================ -->
+  <ng-container *ngIf="isLoggedIn()">
+
+    <canvas class="noise-canvas" #noiseCanvas></canvas>
+    <div class="bg-scanlines fixed"></div>
+    <div class="bg-vignette fixed"></div>
+    <div class="glitch-cut" [class.fire]="glitchActive()"></div>
+
+    <!-- scroll progress -->
+    <div class="scroll-progress-track">
+      <div class="scroll-progress-fill" [style.width.%]="scrollProgress()"></div>
+    </div>
+
+    <!-- top hud -->
+    <header class="top-hud">
+      <span class="hud-title">
+        SWECHA // <b [class.is-admin]="isAdmin">{{ isAdmin ? 'ADMIN ACCESS' : 'VIEWER ACCESS' }}</b>
+      </span>
+      <button class="btn ghost small" (click)="logout()">LOGOUT</button>
+    </header>
+
+    <main class="story">
+
+      <!-- ==================================================
+           SECTION 1 — LOGLINE
+           ================================================== -->
+      <section class="content-slide" id="logline">
+        <div class="section-tag">01 // LOGLINE</div>
+        <div class="terminal-card wide">
+          <ng-container *ngIf="!editing['logline']; else loglineEdit">
+            <p class="body-text">{{ logline }}</p>
+          </ng-container>
+          <ng-template #loglineEdit>
+            <textarea class="edit-textarea" [(ngModel)]="logline" rows="5" name="logline"></textarea>
+          </ng-template>
+
+          <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('logline')">
+            {{ editing['logline'] ? '💾 SAVE' : '✎ EDIT' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SECTION 2 — SYNOPSIS
+           ================================================== -->
+      <section class="content-slide" id="synopsis">
+        <div class="section-tag">02 // SYNOPSIS</div>
+        <div class="terminal-card wide">
+          <ng-container *ngIf="!editing['synopsis']; else synopsisEdit">
+            <p class="body-text">{{ synopsis }}</p>
+          </ng-container>
+          <ng-template #synopsisEdit>
+            <textarea class="edit-textarea" [(ngModel)]="synopsis" rows="7" name="synopsis"></textarea>
+          </ng-template>
+
+          <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('synopsis')">
+            {{ editing['synopsis'] ? '💾 SAVE' : '✎ EDIT' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SECTION 3 — EPISODIC SYNOPSIS
+           ================================================== -->
+      <section class="content-slide" id="episodic">
+        <div class="section-tag">03 // EPISODIC SYNOPSIS</div>
+
+        <div class="card-grid episodes-grid">
+          <article class="glass-card" *ngFor="let ep of episodes; trackBy: trackById">
+            <div class="card-image-wrap portrait">
+              <img [src]="ep.image" [alt]="ep.title" />
+              <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
+                📷
+                <input type="file" accept="image/*" hidden (change)="onImageChange($event, ep, 'image')" />
+              </label>
+            </div>
+
+            <ng-container *ngIf="!editing['episodic']; else epEdit">
+              <h3>{{ ep.title }}</h3>
+              <p>{{ ep.text }}</p>
+            </ng-container>
+
+            <ng-template #epEdit>
+              <input class="edit-input" [(ngModel)]="ep.title" name="epTitle{{ ep.id }}" />
+              <textarea class="edit-textarea" [(ngModel)]="ep.text" rows="4" name="epText{{ ep.id }}"></textarea>
+              <button class="btn danger small" (click)="removeEpisode(ep.id)">Remove episode</button>
+            </ng-template>
+          </article>
+        </div>
+
+        <div class="section-admin-bar" *ngIf="isAdmin">
+          <button class="btn small" (click)="toggleEdit('episodic')">
+            {{ editing['episodic'] ? '💾 Done editing' : '✎ Edit episodes' }}
+          </button>
+          <button class="btn small ghost" *ngIf="editing['episodic']" (click)="addEpisode()">+ Add episode</button>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SECTION 4 — CHARACTER DETAILS
+           ================================================== -->
+      <section class="content-slide" id="characters">
+        <div class="section-tag">04 // CHARACTER DETAILS</div>
+
+        <div class="card-grid characters-grid">
+          <article class="glass-card" *ngFor="let char of characters; trackBy: trackById">
+            <div class="card-image-wrap portrait round">
+              <img [src]="char.photo" [alt]="char.name" />
+              <label class="image-edit-btn" *ngIf="isAdmin" title="Change photo">
+                📷
+                <input type="file" accept="image/*" hidden (change)="onImageChange($event, char, 'photo')" />
+              </label>
+            </div>
+
+            <ng-container *ngIf="!editing['characters']; else charEdit">
+              <h3>{{ char.name }}</h3>
+              <p class="role-tag">{{ char.role }}</p>
+              <p>{{ char.description }}</p>
+            </ng-container>
+
+            <ng-template #charEdit>
+              <input class="edit-input" [(ngModel)]="char.name" placeholder="Name" name="charName{{ char.id }}" />
+              <input class="edit-input" [(ngModel)]="char.role" placeholder="Role" name="charRole{{ char.id }}" />
+              <textarea class="edit-textarea" [(ngModel)]="char.description" rows="4" name="charDesc{{ char.id }}"></textarea>
+              <button class="btn danger small" (click)="removeCharacter(char.id)">Remove character</button>
+            </ng-template>
+          </article>
+        </div>
+
+        <div class="section-admin-bar" *ngIf="isAdmin">
+          <button class="btn small" (click)="toggleEdit('characters')">
+            {{ editing['characters'] ? '💾 Done editing' : '✎ Edit characters' }}
+          </button>
+          <button class="btn small ghost" *ngIf="editing['characters']" (click)="addCharacter()">+ Add character</button>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SECTION 5 — MOOD BOARD
+           ================================================== -->
+      <section class="content-slide" id="moodboard">
+        <div class="section-tag">05 // MOOD BOARD</div>
+
+        <div class="mood-grid">
+          <figure class="mood-tile" *ngFor="let m of moodBoard; trackBy: trackById">
+            <img [src]="m.src" [alt]="m.caption || 'Mood board image'" />
+            <figcaption *ngIf="m.caption">{{ m.caption }}</figcaption>
+            <button class="tile-remove" *ngIf="isAdmin && editing['moodboard']" (click)="removeMoodImage(m.id)">✕</button>
+          </figure>
+        </div>
+
+        <div class="section-admin-bar" *ngIf="isAdmin">
+          <button class="btn small" (click)="toggleEdit('moodboard')">
+            {{ editing['moodboard'] ? '💾 Done editing' : '✎ Edit mood board' }}
+          </button>
+          <label class="btn small ghost" *ngIf="editing['moodboard']">
+            + Add image
+            <input type="file" accept="image/*" hidden (change)="addMoodImage($event)" />
+          </label>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SECTION 6 — TECHNICALITIES
+           ================================================== -->
+      <section class="content-slide" id="technicalities">
+        <div class="section-tag">06 // TECHNICALITIES</div>
+
+        <div class="tech-stack">
+          <article class="tech-row" *ngFor="let item of technicalities; trackBy: trackById">
+            <div class="card-image-wrap portrait tall">
+              <img [src]="item.image" [alt]="item.heading" />
+              <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
+                📷
+                <input type="file" accept="image/*" hidden (change)="onImageChange($event, item, 'image')" />
+              </label>
+            </div>
+
+            <div class="tech-copy">
+              <ng-container *ngIf="!editing['technicalities']; else techEdit">
+                <h3>{{ item.heading }}</h3>
+                <p>{{ item.text }}</p>
+                <div class="link-row">
+                  <a
+                    class="tech-link"
+                    *ngFor="let l of item.links"
+                    [href]="l.url"
+                    target="_blank"
+                    rel="noopener noreferrer">
+                    {{ l.label }} ↗
+                  </a>
+                </div>
+              </ng-container>
+
+              <ng-template #techEdit>
+                <input class="edit-input" [(ngModel)]="item.heading" placeholder="Heading" name="techHeading{{ item.id }}" />
+                <textarea class="edit-textarea" [(ngModel)]="item.text" rows="4" name="techText{{ item.id }}"></textarea>
+
+                <div class="link-edit-row" *ngFor="let l of item.links">
+                  <input class="edit-input" [(ngModel)]="l.label" placeholder="Link label" name="linkLabel{{ l.id }}" />
+                  <input class="edit-input" [(ngModel)]="l.url" placeholder="https://…" name="linkUrl{{ l.id }}" />
+                  <button class="btn danger small" (click)="removeTechLink(item, l.id)">✕</button>
+                </div>
+
+                <div class="row-actions">
+                  <button class="btn small ghost" (click)="addTechLink(item)">+ Add link</button>
+                  <button class="btn danger small" (click)="removeTechItem(item.id)">Remove section</button>
+                </div>
+              </ng-template>
+            </div>
+          </article>
+        </div>
+
+        <div class="section-admin-bar" *ngIf="isAdmin">
+          <button class="btn small" (click)="toggleEdit('technicalities')">
+            {{ editing['technicalities'] ? '💾 Done editing' : '✎ Edit technicalities' }}
+          </button>
+          <button class="btn small ghost" *ngIf="editing['technicalities']" (click)="addTechItem()">+ Add section</button>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SECTION 7 — DIRECTOR'S NOTES
+           ================================================== -->
+      <section class="content-slide" id="directors-notes">
+        <div class="section-tag">07 // DIRECTOR'S NOTES</div>
+
+        <div class="terminal-card wide">
+          <ng-container *ngIf="!editing['directors']; else notesEdit">
+            <p class="body-text">{{ directorsNotesText }}</p>
+          </ng-container>
+          <ng-template #notesEdit>
+            <textarea class="edit-textarea" [(ngModel)]="directorsNotesText" rows="6" name="directorsText"></textarea>
+          </ng-template>
+        </div>
+
+        <div class="mood-grid" *ngIf="directorsNotesImages.length || isAdmin">
+          <figure class="mood-tile" *ngFor="let img of directorsNotesImages; trackBy: trackById">
+            <img [src]="img.src" [alt]="img.caption || 'Director notes image'" />
+            <figcaption *ngIf="img.caption">{{ img.caption }}</figcaption>
+            <button class="tile-remove" *ngIf="isAdmin && editing['directors']" (click)="removeDirectorsImage(img.id)">✕</button>
+          </figure>
+        </div>
+
+        <h4 class="sub-heading" *ngIf="articles.length || isAdmin">Press &amp; Articles</h4>
+        <div class="article-grid">
+          <article class="article-card" *ngFor="let a of articles; trackBy: trackById">
+            <img [src]="a.image" [alt]="a.title" *ngIf="a.image" />
+
+            <ng-container *ngIf="!editing['directors']; else articleEdit">
+              <h5>{{ a.title }}</h5>
+              <p>{{ a.description }}</p>
+              <a class="tech-link" [href]="a.link" target="_blank" rel="noopener noreferrer">Read article ↗</a>
+            </ng-container>
+
+            <ng-template #articleEdit>
+              <input class="edit-input" [(ngModel)]="a.title" placeholder="Article title" name="artTitle{{ a.id }}" />
+              <textarea class="edit-textarea" [(ngModel)]="a.description" rows="3" name="artDesc{{ a.id }}"></textarea>
+              <input class="edit-input" [(ngModel)]="a.link" placeholder="https://…" name="artLink{{ a.id }}" />
+              <label class="btn small ghost">
+                Change image
+                <input type="file" accept="image/*" hidden (change)="onImageChange($event, a, 'image')" />
+              </label>
+              <button class="btn danger small" (click)="removeArticle(a.id)">Remove article</button>
+            </ng-template>
+          </article>
+        </div>
+
+        <div class="section-admin-bar" *ngIf="isAdmin">
+          <button class="btn small" (click)="toggleEdit('directors')">
+            {{ editing['directors'] ? '💾 Done editing' : '✎ Edit director\u2019s notes' }}
+          </button>
+          <ng-container *ngIf="editing['directors']">
+            <label class="btn small ghost">
+              + Add image
+              <input type="file" accept="image/*" hidden (change)="addDirectorsImage($event)" />
+            </label>
+            <button class="btn small ghost" (click)="addArticle()">+ Add article</button>
+          </ng-container>
+        </div>
+      </section>
+
+      <!-- ==================================================
+           SECTION 8 — ABOUT ME
+           ================================================== -->
+      <section class="content-slide" id="about">
+        <div class="section-tag">08 // ABOUT ME</div>
+
+        <div class="about-layout">
+          <div class="card-image-wrap portrait round">
+            <img [src]="aboutMe.photo" alt="Director photo" />
+            <label class="image-edit-btn" *ngIf="isAdmin" title="Change photo">
+              📷
+              <input type="file" accept="image/*" hidden (change)="onImageChange($event, aboutMe, 'photo')" />
+            </label>
+          </div>
+
+          <div class="about-copy">
+            <ng-container *ngIf="!editing['about']; else aboutEdit">
+              <p class="body-text">{{ aboutMe.bio }}</p>
+              <div class="link-row">
+                <a
+                  class="tech-link"
+                  *ngFor="let l of aboutMe.links"
+                  [href]="l.url"
+                  target="_blank"
+                  rel="noopener noreferrer">
+                  {{ l.label }} ↗
+                </a>
+              </div>
+            </ng-container>
+
+            <ng-template #aboutEdit>
+              <textarea class="edit-textarea" [(ngModel)]="aboutMe.bio" rows="6" name="aboutBio"></textarea>
+
+              <div class="link-edit-row" *ngFor="let l of aboutMe.links">
+                <input class="edit-input" [(ngModel)]="l.label" placeholder="Link label" name="aboutLinkLabel{{ l.id }}" />
+                <input class="edit-input" [(ngModel)]="l.url" placeholder="https://…" name="aboutLinkUrl{{ l.id }}" />
+                <button class="btn danger small" (click)="removeAboutLink(l.id)">✕</button>
+              </div>
+              <button class="btn small ghost" (click)="addAboutLink()">+ Add link</button>
+            </ng-template>
+
+            <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('about')">
+              {{ editing['about'] ? '💾 SAVE' : '✎ EDIT' }}
+            </button>
+          </div>
+        </div>
+      </section>
+
     </main>
-  </div>
-}
+
+    <footer class="site-footer">
+      <p>SWECHA SYSTEM // END OF TRANSMISSION</p>
+    </footer>
+  </ng-container>
+</div>
