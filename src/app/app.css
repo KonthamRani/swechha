@@ -38,6 +38,60 @@ button, input, textarea, select {
   color: inherit;
 }
 
+::placeholder {
+  color: rgba(255, 246, 235, 0.32);
+  font-style: italic;
+}
+
+/* =========================================================
+   BACKGROUND REFERENCE OVERLAY (spec §10)
+   Sits behind absolutely everything, on every screen. A large,
+   blurred, very-low-opacity image with a slow drift/scale so it
+   reads as "something hidden behind the interface" rather than
+   an obvious photo.
+   ========================================================= */
+.bg-reference-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: red;
+}
+.bg-reference-overlay::after {
+  /* dark overlay + vignette between the image and the UI */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.86) 72%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75));
+  z-index: 1;
+}
+.bg-reference-overlay img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 130%;
+  max-width: none;
+  height: auto;
+  transform: translate(-50%, -50%) scale(1.15);
+  opacity: 0.1;
+  filter: blur(9px) saturate(1.2) contrast(1.05);
+  animation: bgDrift 42s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+.bg-reference-overlay.glitchy img { animation-duration: 42s, 0.5s; }
+@keyframes bgDrift {
+  0%, 100% { transform: translate(-50%, -50%) scale(1.15) rotate(0deg); opacity: 0.09; }
+  20% { transform: translate(-48%, -52%) scale(1.19) rotate(0.3deg); opacity: 0.12; }
+  45% { transform: translate(-52%, -49%) scale(1.22) rotate(-0.2deg); opacity: 0.07; }
+  70% { transform: translate(-49%, -51%) scale(1.17) rotate(0.15deg); opacity: 0.11; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-reference-overlay img { animation: none; }
+}
+
 /* =========================================================
    BACKGROUND / SYSTEM OVERLAYS
    ========================================================= */
@@ -107,9 +161,6 @@ button, input, textarea, select {
 
 /* =========================================================
    BRAND LOGO IMAGE (login card + loading screen)
-   Replaces the old CSS glitch-text title with the actual
-   SWECHHA mark (icon + wordmark) exported from the reference
-   HTML's embedded assets.
    ========================================================= */
 .brand-logo {
   display: block;
@@ -160,10 +211,7 @@ button, input, textarea, select {
 }
 
 /* =========================================================
-   ADMIN-MODE AMBIENT BACKGROUND LOGO
-   A large, blurred, low-opacity mark that drifts very slowly
-   behind admin content — a "you're inside the system" cue
-   that stays out of the way of reading and editing.
+   ADMIN-MODE AMBIENT BACKGROUND LOGO (spec §11)
    ========================================================= */
 .admin-bg-logo {
   position: fixed;
@@ -223,6 +271,8 @@ button, input, textarea, select {
   border-color: rgba(255, 22, 61, 0.4);
   background: rgba(255, 22, 61, 0.08);
 }
+.btn.add-btn { border-color: rgba(73, 255, 105, 0.35); }
+.btn.add-btn:hover { border-color: rgba(73, 255, 105, 0.7); box-shadow: 0 0 14px rgba(73, 255, 105, 0.25); }
 label.btn input[type="file"] { display: none; }
 
 /* =========================================================
@@ -319,7 +369,7 @@ label.btn input[type="file"] { display: none; }
   height: 100%;
   background: linear-gradient(90deg, var(--red), var(--hot), var(--cyan));
   box-shadow: 0 0 16px var(--red), 0 0 28px rgba(255, 0, 79, 0.6);
-  transition: width 0.4s ease-out;
+  transition: width 0.18s ease-out;
 }
 .loading-pct {
   margin: 10px 0 0;
@@ -335,7 +385,7 @@ label.btn input[type="file"] { display: none; }
   line-height: 1.6;
   color: rgba(73, 255, 105, 0.72);
   text-shadow: 0 0 10px rgba(73, 255, 105, 0.4);
-  min-height: 180px;
+  min-height: 140px;
 }
 .boot-feed p { margin: 0 0 4px; animation: terminalLine 0.5s ease forwards; }
 @keyframes terminalLine {
@@ -396,6 +446,7 @@ label.btn input[type="file"] { display: none; }
 }
 .hud-title b { color: var(--green); font-weight: 700; }
 .hud-title b.is-admin { color: var(--red); text-shadow: 0 0 8px var(--red); }
+.hud-actions { display: flex; align-items: center; gap: 8px; }
 
 /* =========================================================
    MAIN STORY LAYOUT
@@ -492,6 +543,40 @@ label.btn input[type="file"] { display: none; }
 .edit-textarea:focus,
 .edit-input:focus { border-color: rgba(255, 22, 61, 0.6); }
 .edit-textarea { resize: vertical; }
+.edit-input.input-invalid { border-color: rgba(255, 26, 45, 0.85); box-shadow: 0 0 0 2px rgba(255, 26, 45, 0.15); }
+
+/* =========================================================
+   UPLOAD PROGRESS CHIPS
+   ========================================================= */
+.upload-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--green);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(73, 255, 105, 0.5);
+  border-radius: 999px;
+  padding: 5px 10px;
+  text-shadow: 0 0 6px rgba(73, 255, 105, 0.6);
+}
+.upload-chip.on-image {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+}
+.tile-uploading {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(135deg, rgba(255, 22, 61, 0.08) 0 10px, rgba(0, 0, 0, 0.4) 10px 20px);
+  color: var(--green);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
 
 /* =========================================================
    CARD GRIDS (episodes / characters)
@@ -598,9 +683,21 @@ label.btn input[type="file"] { display: none; }
 .image-edit-btn:hover { background: rgba(255, 22, 61, 0.28); }
 .image-edit-btn.add-image-btn {
   position: static;
-  width: 56px;
-  height: 56px;
+  width: auto;
+  height: auto;
+  border-radius: 999px;
+  padding: 10px 16px;
   margin-bottom: 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  gap: 6px;
+  color: rgba(255, 246, 235, 0.75);
+  border-style: dashed;
+}
+.image-edit-btn.add-image-btn.round {
+  border-radius: 999px;
+  width: fit-content;
+  margin: 0 auto 6px;
 }
 
 /* =========================================================
@@ -629,11 +726,7 @@ label.btn input[type="file"] { display: none; }
   display: block;
   transition: transform 0.4s ease;
 }
-/* Mood board images specifically are portrait 9:16, per section brief;
-   director's-notes tiles (same .mood-tile class) stay landscape 3:2. */
-.mood-tile.portrait-tile img {
-  aspect-ratio: 9 / 16;
-}
+.mood-tile.portrait-tile img { aspect-ratio: 9 / 16; }
 .mood-tile:hover img { transform: scale(1.06); }
 .mood-tile figcaption {
   position: absolute;
@@ -645,6 +738,16 @@ label.btn input[type="file"] { display: none; }
   letter-spacing: 0.04em;
   color: var(--ink);
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+}
+.mood-tile .tile-caption-input {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  margin: 0;
+  font-size: 0.7rem;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.65);
 }
 .tile-remove {
   position: absolute;
@@ -660,12 +763,11 @@ label.btn input[type="file"] { display: none; }
   display: grid;
   place-items: center;
   font-size: 0.7rem;
+  z-index: 2;
 }
 
 /* =========================================================
-   TECHNICALITIES — same portrait-image treatment as the mood
-   board; sections with no image just show as plain content,
-   no empty placeholder box.
+   TECHNICALITIES
    ========================================================= */
 .tech-stack { display: grid; gap: 22px; }
 .tech-row {
@@ -678,7 +780,7 @@ label.btn input[type="file"] { display: none; }
   background: rgba(0, 0, 0, 0.32);
 }
 @media (min-width: 720px) {
-  .tech-row { grid-template-columns: 160px 1fr; align-items: start; }
+  .tech-row:has(.card-image-wrap) { grid-template-columns: 160px 1fr; align-items: start; }
 }
 .tech-row .card-image-wrap { width: 100%; max-width: 160px; }
 .tech-row .card-image-wrap.tall img { aspect-ratio: 9 / 16; }
@@ -727,6 +829,7 @@ label.btn input[type="file"] { display: none; }
 @media (min-width: 640px) { .article-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .article-grid { grid-template-columns: repeat(3, 1fr); } }
 .article-card {
+  position: relative;
   border: 1px solid rgba(255, 22, 61, 0.22);
   border-radius: 16px;
   overflow: hidden;
@@ -816,6 +919,10 @@ label.btn input[type="file"] { display: none; }
   .hud-title { font-size: 0.64rem; padding: 7px 10px; }
   .content-slide { gap: 16px; }
   .card-image-wrap.round { width: 40vw; }
+  .mood-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  .mood-grid { grid-template-columns: 1fr; }
 }
 
 @media (hover: none) and (pointer: coarse) {

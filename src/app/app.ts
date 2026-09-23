@@ -12,15 +12,26 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, SwechhaContent } from './content.service';
+import { StorageService, StorageFolders } from './storage.service';
 
 /* =========================================================
    DATA MODELS
+   Every image field now has a matching `<field>Path` sibling —
+   the Firebase Storage path for that file. It's what lets us
+   delete the old image after a replacement upload succeeds,
+   instead of leaving orphaned files behind in Storage.
    ========================================================= */
+export interface ImageRef {
+  url: string;
+  path?: string;
+}
+
 export interface Episode {
   id: number;
   title: string;
   text: string;
   image: string;
+  imagePath?: string;
 }
 
 export interface CharacterEntry {
@@ -29,11 +40,13 @@ export interface CharacterEntry {
   role: string;
   description: string;
   photo: string;
+  photoPath?: string;
 }
 
 export interface MoodImage {
   id: number;
   src: string;
+  srcPath?: string;
   caption: string;
 }
 
@@ -46,6 +59,7 @@ export interface TechLink {
 export interface TechItem {
   id: number;
   image: string;
+  imagePath?: string;
   heading: string;
   text: string;
   links: TechLink[];
@@ -57,6 +71,7 @@ export interface Article {
   description: string;
   link: string;
   image: string;
+  imagePath?: string;
 }
 
 export interface AboutLink {
@@ -76,60 +91,47 @@ export interface AboutLink {
 })
 export class App implements AfterViewChecked, OnDestroy {
   private content = inject(ContentService);
+  private storage = inject(StorageService);
 
-  /* ---------- AUTH STATE (plain — only ever written inside
-     click/submit handlers, so zoneless CD already sees them) ---------- */
+  /* ---------- AUTH STATE ---------- */
   username = '';
   password = '';
   isAdmin = false;
 
-  /* ---------- STATE DRIVEN BY setInterval/setTimeout/Firestore ----------
-     These MUST be signals. A timer or network callback runs outside any
-     Angular-tracked event, so a plain field write here would silently
-     update the class but never trigger a re-render under zoneless change
-     detection. Signal writes always notify Angular's renderer, zoneless
-     or not — which is also why the *content* itself (synced live from
-     Firestore, i.e. from other people's browsers) has to live in signals
-     too, not the plain fields the original version used. */
+  /* ---------- TIMER / NETWORK-DRIVEN STATE (signals — see note
+     in earlier revisions on why these can't be plain fields) ---------- */
   isLoggedIn = signal(false);
   isLoading = signal(false);
   loadingProgress = signal(0);
-  loadingStatusText = signal('INITIATING SWECHHA INTERFACE');
+  loadingStatusText = signal('SYSTEM INITIALIZING');
   bootLines = signal<string[]>([]);
   scrollProgress = signal(0);
   glitchActive = signal(false);
-
-  /** false = logo sits centered on screen; true = docked into the top-left HUD. */
   logoDocked = signal(false);
+
+  /** Per-image upload progress, keyed e.g. 'ep-3', 'char-1', 'background'. Absent key = not uploading. */
+  uploadProgress = signal<Record<string, number>>({});
+
+  /** Large ambient backdrop image (section 10 of the spec). Falls back to a bundled asset until an admin overrides it. */
+  backgroundImage = signal<ImageRef>({ url: '' });
 
   private loadingTimer: any = null;
   private dockTimer: any = null;
 
-  /* Slowed-down, more suspenseful boot sequence — a restricted-system
-     "authenticating you" feel rather than a snappy progress bar. Each
-     status stage holds for a while and the boot feed reveals itself
-     unevenly with pauses and stutters. */
   private readonly loadingStatusSteps = [
-    'INITIATING SWECHHA INTERFACE',
-    'ESTABLISHING SECURE UPLINK',
-    'AUTH HANDSHAKE IN PROGRESS',
-    'VERIFYING OPERATOR CREDENTIALS',
-    'DECRYPTING STORY PACKETS',
-    'BYPASSING TRACE COUNTERMEASURES',
-    'CALIBRATING VISUAL CORTEX',
-    'SESSION STABILIZING'
+    'SYSTEM INITIALIZING',
+    'VERIFYING ACCESS',
+    'LOADING ARCHIVE',
+    'DECRYPTING CONTENT',
+    'ACCESS GRANTED'
   ];
   private readonly bootFeedLines = [
     '> SWECHHA_OS: cold boot',
     '> identity layer: waking',
     '> credential stream: detected',
-    '> access level: unverified',
     '> tracing origin node...',
-    '> origin node: masked',
-    '> narrative packets: loading',
+    '> archive index: loading',
     '> integrity check: passed',
-    '> visual cortex: calibrating',
-    '> firewall handshake: complete',
     '> session handshake: complete'
   ];
 
@@ -140,11 +142,11 @@ export class App implements AfterViewChecked, OnDestroy {
   private noiseLastTs = 0;
   private noiseCanvasBound = false;
 
-  /* ---------- SCROLL-REVEAL FOR SECTIONS ---------- */
+  /* ---------- SCROLL-REVEAL ---------- */
   private revealObserver: IntersectionObserver | null = null;
   private revealBound = false;
 
-  /* ---------- ID COUNTER FOR NEW ITEMS ---------- */
+  /* ---------- ID COUNTER ---------- */
   private idCounter = 1000;
   private nextId(): number {
     this.idCounter += 1;
@@ -164,16 +166,11 @@ export class App implements AfterViewChecked, OnDestroy {
   };
 
   /* =========================================================
-     CONTENT — now signals. Local seed values below are only the
-     *fallback* shown before the first Firestore snapshot arrives
-     (or if Firestore is unreachable). Once connected, every
-     viewer's copy of these signals is kept in sync by the effect
-     in the constructor. Admin edits are written back to Firestore
-     in saveSection(), which is called when a section's "Done
-     editing" / "SAVE" button is pressed.
-
-     Every section seeds with exactly ONE item — admin uses the
-     "+ Add" controls to grow it from there.
+     CONTENT — signals, one example card per section. Admin
+     grows each list with the "+ Add" controls; new items start
+     with EMPTY text fields (real HTML placeholders carry the
+     hint text in the template) and no image until one is
+     uploaded.
      ========================================================= */
 
   logline = signal(
@@ -240,7 +237,7 @@ export class App implements AfterViewChecked, OnDestroy {
     }
   ]);
 
-  aboutMe = signal<{ photo: string; bio: string; links: AboutLink[] }>({
+  aboutMe = signal<{ photo: string; photoPath?: string; bio: string; links: AboutLink[] }>({
     photo: 'https://placehold.co/400x500/0a0000/ff163d?text=DIRECTOR',
     bio: 'I\u2019m a writer-director working at the intersection of thriller and speculative fiction. SWECHHA is my ' +
       'first serialized project, built from years of watching how cities and platforms quietly reshape each other.',
@@ -251,9 +248,8 @@ export class App implements AfterViewChecked, OnDestroy {
   });
 
   constructor() {
-    // Mirrors Firestore -> local signals for every viewer. Skips a section
-    // while its own admin is mid-edit so a remote update can't clobber
-    // what they're currently typing.
+    // Firestore -> local signals, for every viewer. Skips a section the
+    // current user is mid-edit on, so a remote update can't clobber typing.
     effect(() => {
       const remote = this.content.content();
       if (!remote) return;
@@ -270,10 +266,9 @@ export class App implements AfterViewChecked, OnDestroy {
         if (remote.articles) this.articles.set(remote.articles);
       }
       if (!this.editing['about'] && remote.aboutMe) this.aboutMe.set(remote.aboutMe);
+      if (remote.backgroundImage?.url) this.backgroundImage.set(remote.backgroundImage);
     });
 
-    // First client to connect seeds Firestore with the local defaults above,
-    // so the site isn't blank for everyone before an admin has saved anything.
     effect(() => {
       if (this.content.ready() && !this.content.content()) {
         this.content.seedIfEmpty(this.snapshotContent());
@@ -281,7 +276,6 @@ export class App implements AfterViewChecked, OnDestroy {
     });
   }
 
-  /** Builds the full-content object Firestore expects, from current signal values. */
   private snapshotContent(): SwechhaContent {
     return {
       logline: this.logline(),
@@ -293,11 +287,29 @@ export class App implements AfterViewChecked, OnDestroy {
       directorsNotesText: this.directorsNotesText(),
       directorsNotesImages: this.directorsNotesImages(),
       articles: this.articles(),
-      aboutMe: this.aboutMe()
+      aboutMe: this.aboutMe(),
+      backgroundImage: this.backgroundImage()
     };
   }
 
-  /** Pushes just the fields for one section up to Firestore. */
+  /* ---------- LINK VALIDATION ---------- */
+  isValidUrl(url: string): boolean {
+    if (!url) return false;
+    const trimmed = url.trim();
+    if (trimmed.startsWith('mailto:')) return trimmed.length > 'mailto:'.length;
+    try {
+      const u = new URL(trimmed);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  /** Drops half-filled links (no url) before saving; keeps the admin's edit view untouched. */
+  private cleanLinks<T extends { label: string; url: string }>(links: T[]): T[] {
+    return links.filter(l => l.url && l.url.trim() !== '');
+  }
+
   private saveSection(section: string): void {
     let partial: Partial<SwechhaContent> | null = null;
     switch (section) {
@@ -317,6 +329,7 @@ export class App implements AfterViewChecked, OnDestroy {
         partial = { moodBoard: this.moodBoard() };
         break;
       case 'technicalities':
+        this.technicalities.update(list => list.map(t => ({ ...t, links: this.cleanLinks(t.links) })));
         partial = { technicalities: this.technicalities() };
         break;
       case 'directors':
@@ -327,6 +340,7 @@ export class App implements AfterViewChecked, OnDestroy {
         };
         break;
       case 'about':
+        this.aboutMe.update(a => ({ ...a, links: this.cleanLinks(a.links) }));
         partial = { aboutMe: this.aboutMe() };
         break;
     }
@@ -361,21 +375,12 @@ export class App implements AfterViewChecked, OnDestroy {
 
   private initRevealObserver(slides: NodeListOf<Element>): void {
     this.revealObserver = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-          }
-        });
-      },
+      entries => entries.forEach(entry => entry.isIntersecting && entry.target.classList.add('is-visible')),
       { threshold: 0.18 }
     );
     slides.forEach(slide => this.revealObserver!.observe(slide));
   }
 
-  /* =========================================================
-     SCROLL PROGRESS
-     ========================================================= */
   @HostListener('window:scroll')
   onWindowScroll(): void {
     const doc = document.documentElement;
@@ -420,12 +425,9 @@ export class App implements AfterViewChecked, OnDestroy {
   }
 
   /**
-   * Deliberately slow, uneven boot sequence — this should feel like you're
-   * being let into somewhere you're not quite supposed to be, not like a
-   * normal app loading. Ticks are slower (~420ms instead of ~220ms), the
-   * bar creeps rather than races, it stalls at a couple of points, and the
-   * boot feed staggers unevenly with its own timers instead of piggy-
-   * backing on the progress tick. Total time lands around 7–9 seconds.
+   * SYSTEM INITIALIZING -> VERIFYING ACCESS -> LOADING ARCHIVE ->
+   * DECRYPTING CONTENT -> ACCESS GRANTED, ~3.5–4s total, smooth
+   * progress (no artificial stalls — just deliberate, not tedious).
    */
   private startLoadingSequence(): void {
     this.isLoading.set(true);
@@ -433,40 +435,10 @@ export class App implements AfterViewChecked, OnDestroy {
     this.bootLines.set([]);
     this.loadingStatusText.set(this.loadingStatusSteps[0]);
     let statusIndex = 0;
-
-    // Boot feed lines reveal on their own uneven cadence, independent of
-    // the progress bar, so the two never feel mechanically linked.
     let bootIndex = 0;
-    const scheduleNextBootLine = () => {
-      if (bootIndex >= this.bootFeedLines.length) return;
-      const delay = 260 + Math.random() * 20;
-      setTimeout(() => {
-        this.bootLines.update(lines => [...lines, this.bootFeedLines[bootIndex]]);
-        bootIndex += 1;
-        scheduleNextBootLine();
-      }, delay);
-    };
-    scheduleNextBootLine();
-
-    // A couple of points where the bar visibly stalls, like it's waiting
-    // on something outside its control — part of the "restricted system"
-    // feel rather than a smooth deterministic climb.
-    const stallPoints = [32 + Math.random() * 8, 68 + Math.random() * 8];
-    let stalledUntil = 0;
 
     this.loadingTimer = setInterval(() => {
-      const now = Date.now();
-      if (now < stalledUntil) return;
-
-      const current = this.loadingProgress();
-      const nextStall = stallPoints.find(p => current < p);
-      if (nextStall !== undefined && current + 2 >= nextStall) {
-        this.loadingProgress.set(Math.min(nextStall, 100));
-        stalledUntil = now + 900 + Math.random() * 700;
-        return;
-      }
-
-      const next = current + 1.5 + Math.random() * 3.5;
+      const next = this.loadingProgress() + 3.5 + Math.random() * 5;
       this.loadingProgress.set(Math.min(next, 100));
 
       const statusThreshold = Math.floor((this.loadingProgress() / 100) * this.loadingStatusSteps.length);
@@ -475,29 +447,25 @@ export class App implements AfterViewChecked, OnDestroy {
         this.loadingStatusText.set(this.loadingStatusSteps[statusIndex]);
       }
 
+      if (bootIndex < this.bootFeedLines.length && Math.random() > 0.4) {
+        this.bootLines.update(lines => [...lines, this.bootFeedLines[bootIndex]]);
+        bootIndex += 1;
+      }
+
       if (this.loadingProgress() >= 100) {
-        this.loadingStatusText.set('SESSION STABILIZED');
+        this.loadingStatusText.set('ACCESS GRANTED');
         clearInterval(this.loadingTimer);
         setTimeout(() => {
           this.isLoading.set(false);
           this.isLoggedIn.set(true);
-          this.logoDocked.set(false); // logo starts centered, full size
+          this.logoDocked.set(false);
           this.triggerGlitch();
-
-          // Hold the logo centered for a beat, then send it to the HUD
-          // corner — the same beat the reference site's preloader uses
-          // before its mark settles into the nav bar.
-          this.dockTimer = setTimeout(() => {
-            this.logoDocked.set(true);
-          }, 700);
-        }, 550);
+          this.dockTimer = setTimeout(() => this.logoDocked.set(true), 650);
+        }, 400);
       }
-    }, 420);
+    }, 190);
   }
 
-  /* =========================================================
-     GLITCH TRANSITION PULSE
-     ========================================================= */
   triggerGlitch(): void {
     this.glitchActive.set(false);
     setTimeout(() => {
@@ -507,19 +475,15 @@ export class App implements AfterViewChecked, OnDestroy {
   }
 
   /* =========================================================
-     NOISE CANVAS (ambient static overlay — pure DOM/canvas,
-     no template bindings, so no signals needed here)
+     NOISE CANVAS
      ========================================================= */
   private initNoiseCanvas(): void {
     const canvas = this.noiseCanvasRef?.nativeElement;
     if (!canvas) return;
     this.noiseCtx = canvas.getContext('2d', { alpha: true });
     this.resizeNoiseCanvas();
-
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!reduceMotion) {
-      this.noiseRafId = requestAnimationFrame(this.drawNoise);
-    }
+    if (!reduceMotion) this.noiseRafId = requestAnimationFrame(this.drawNoise);
   }
 
   private resizeNoiseCanvas(): void {
@@ -550,72 +514,86 @@ export class App implements AfterViewChecked, OnDestroy {
   };
 
   /* =========================================================
-     GENERIC EDIT / IMAGE HELPERS
+     EDIT TOGGLE
      ========================================================= */
   toggleEdit(section: string): void {
     const wasEditing = this.editing[section];
     this.editing[section] = !wasEditing;
-    if (wasEditing) {
-      // Turning edit mode OFF = "Save" for this section.
-      this.saveSection(section);
+    if (wasEditing) this.saveSection(section);
+  }
+
+  /* =========================================================
+     IMAGE UPLOAD — shared plumbing
+     ========================================================= */
+  private setProgress(key: string, pct: number | undefined): void {
+    this.uploadProgress.update(m => {
+      const next = { ...m };
+      if (pct === undefined) delete next[key];
+      else next[key] = pct;
+      return next;
+    });
+  }
+
+  private async handleUpload(
+    file: File,
+    folder: string,
+    baseName: string,
+    key: string,
+    oldPath: string | undefined,
+    apply: (result: { url: string; path: string }) => void
+  ): Promise<void> {
+    this.setProgress(key, 0);
+    try {
+      const result = await this.storage.uploadImage(file, folder, baseName, pct => this.setProgress(key, pct));
+      apply(result);
+      this.setProgress(key, undefined);
+      if (oldPath) this.storage.deleteImage(oldPath).catch(() => {});
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      this.setProgress(key, undefined);
     }
   }
 
-  /** Reads a selected local file, uploads it to Firebase Storage, and writes
-   *  the resulting download URL onto target[field]. Falls back to a local
-   *  base64 preview immediately so the UI doesn't feel stalled during upload. */
-  onImageChange(event: Event, target: any, field: string): void {
+  /** Replaces/sets an image on an existing item (episode, character, tech item, article, about-me). */
+  onImageChange(event: Event, target: any, field: string, folder: string, key: string, pathField?: string): void {
     const input = event.target as HTMLInputElement;
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      target[field] = reader.result as string; // instant local preview
-    };
-    reader.readAsDataURL(file);
-
-    this.content
-      .uploadImage(file, field)
-      .then(url => {
-        target[field] = url; // swap in the real, shareable URL
-      })
-      .catch(err => console.error('Image upload failed:', err));
-
+    const pf = pathField ?? `${field}Path`;
+    const oldPath = target[pf];
+    this.handleUpload(file, folder, key, key, oldPath, result => {
+      target[field] = result.url;
+      target[pf] = result.path;
+    });
     input.value = '';
   }
 
+  /* ---------- FOLDER HELPERS (used from the template) ---------- */
+  episodeFolder(id: number): string { return StorageFolders.episode(id); }
+  characterFolder(id: number): string { return StorageFolders.character(id); }
+  moodFolder(id: number): string { return StorageFolders.moodBoard(id); }
+  techFolder(id: number): string { return StorageFolders.technicality(id); }
+  directorsImageFolder(id: number): string { return StorageFolders.directorsNoteImage(id); }
+  articleFolder(id: number): string { return StorageFolders.directorsArticle(id); }
+
   /* ---------- EPISODES ---------- */
   addEpisode(): void {
-    this.episodes.update(list => [
-      ...list,
-      {
-        id: this.nextId(),
-        title: 'NEW EPISODE',
-        text: 'Episode description goes here.',
-        image: 'https://placehold.co/500x700/0a0000/ff163d?text=NEW'
-      }
-    ]);
+    this.episodes.update(list => [...list, { id: this.nextId(), title: '', text: '', image: '' }]);
   }
   removeEpisode(id: number): void {
+    const item = this.episodes().find(e => e.id === id);
     this.episodes.update(list => list.filter(e => e.id !== id));
+    if (item?.imagePath) this.storage.deleteImage(item.imagePath).catch(() => {});
   }
 
   /* ---------- CHARACTERS ---------- */
   addCharacter(): void {
-    this.characters.update(list => [
-      ...list,
-      {
-        id: this.nextId(),
-        name: 'NEW CHARACTER',
-        role: 'Role',
-        description: 'Character description goes here.',
-        photo: 'https://placehold.co/400x500/0a0000/ff163d?text=NEW'
-      }
-    ]);
+    this.characters.update(list => [...list, { id: this.nextId(), name: '', role: '', description: '', photo: '' }]);
   }
   removeCharacter(id: number): void {
+    const item = this.characters().find(c => c.id === id);
     this.characters.update(list => list.filter(c => c.id !== id));
+    if (item?.photoPath) this.storage.deleteImage(item.photoPath).catch(() => {});
   }
 
   /* ---------- MOOD BOARD ---------- */
@@ -624,44 +602,30 @@ export class App implements AfterViewChecked, OnDestroy {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
     const tempId = this.nextId();
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.moodBoard.update(list => [...list, { id: tempId, src: reader.result as string, caption: '' }]);
-    };
-    reader.readAsDataURL(file);
-
-    this.content
-      .uploadImage(file, 'moodboard')
-      .then(url => {
-        this.moodBoard.update(list => list.map(m => (m.id === tempId ? { ...m, src: url } : m)));
-      })
-      .catch(err => console.error('Image upload failed:', err));
-
+    const key = `mood-${tempId}`;
+    this.moodBoard.update(list => [...list, { id: tempId, src: '', caption: '' }]);
+    this.handleUpload(file, StorageFolders.moodBoard(tempId), key, key, undefined, result => {
+      this.moodBoard.update(list => list.map(m => (m.id === tempId ? { ...m, src: result.url, srcPath: result.path } : m)));
+    });
     input.value = '';
   }
   removeMoodImage(id: number): void {
+    const item = this.moodBoard().find(m => m.id === id);
     this.moodBoard.update(list => list.filter(m => m.id !== id));
+    if (item?.srcPath) this.storage.deleteImage(item.srcPath).catch(() => {});
   }
 
   /* ---------- TECHNICALITIES ---------- */
   addTechItem(): void {
-    this.technicalities.update(list => [
-      ...list,
-      {
-        id: this.nextId(),
-        image: '',
-        heading: 'NEW SECTION',
-        text: 'Details go here.',
-        links: []
-      }
-    ]);
+    this.technicalities.update(list => [...list, { id: this.nextId(), image: '', heading: '', text: '', links: [] }]);
   }
   removeTechItem(id: number): void {
+    const item = this.technicalities().find(t => t.id === id);
     this.technicalities.update(list => list.filter(t => t.id !== id));
+    if (item?.imagePath) this.storage.deleteImage(item.imagePath).catch(() => {});
   }
   addTechLink(item: TechItem): void {
-    item.links.push({ id: this.nextId(), label: 'New Link', url: 'https://example.com' });
+    item.links.push({ id: this.nextId(), label: '', url: '' });
   }
   removeTechLink(item: TechItem, linkId: number): void {
     item.links = item.links.filter(l => l.id !== linkId);
@@ -673,47 +637,46 @@ export class App implements AfterViewChecked, OnDestroy {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
     const tempId = this.nextId();
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.directorsNotesImages.update(list => [...list, { id: tempId, src: reader.result as string, caption: '' }]);
-    };
-    reader.readAsDataURL(file);
-
-    this.content
-      .uploadImage(file, 'directors-notes')
-      .then(url => {
-        this.directorsNotesImages.update(list => list.map(i => (i.id === tempId ? { ...i, src: url } : i)));
-      })
-      .catch(err => console.error('Image upload failed:', err));
-
+    const key = `dirimg-${tempId}`;
+    this.directorsNotesImages.update(list => [...list, { id: tempId, src: '', caption: '' }]);
+    this.handleUpload(file, StorageFolders.directorsNoteImage(tempId), key, key, undefined, result => {
+      this.directorsNotesImages.update(list => list.map(i => (i.id === tempId ? { ...i, src: result.url, srcPath: result.path } : i)));
+    });
     input.value = '';
   }
   removeDirectorsImage(id: number): void {
+    const item = this.directorsNotesImages().find(i => i.id === id);
     this.directorsNotesImages.update(list => list.filter(i => i.id !== id));
+    if (item?.srcPath) this.storage.deleteImage(item.srcPath).catch(() => {});
   }
   addArticle(): void {
-    this.articles.update(list => [
-      ...list,
-      {
-        id: this.nextId(),
-        title: 'New Article',
-        description: 'Article description goes here.',
-        link: 'https://example.com',
-        image: 'https://placehold.co/300x180/0a0000/00f7ff?text=NEW'
-      }
-    ]);
+    this.articles.update(list => [...list, { id: this.nextId(), title: '', description: '', link: '', image: '' }]);
   }
   removeArticle(id: number): void {
+    const item = this.articles().find(a => a.id === id);
     this.articles.update(list => list.filter(a => a.id !== id));
+    if (item?.imagePath) this.storage.deleteImage(item.imagePath).catch(() => {});
   }
 
   /* ---------- ABOUT ME ---------- */
   addAboutLink(): void {
-    this.aboutMe.update(a => ({ ...a, links: [...a.links, { id: this.nextId(), label: 'New Link', url: 'https://example.com' }] }));
+    this.aboutMe.update(a => ({ ...a, links: [...a.links, { id: this.nextId(), label: '', url: '' }] }));
   }
   removeAboutLink(id: number): void {
     this.aboutMe.update(a => ({ ...a, links: a.links.filter(l => l.id !== id) }));
+  }
+
+  /* ---------- BACKGROUND OVERLAY ---------- */
+  onBackgroundImageChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const oldPath = this.backgroundImage().path;
+    this.handleUpload(file, StorageFolders.background(), 'overlay', 'background', oldPath, result => {
+      this.backgroundImage.set({ url: result.url, path: result.path });
+      this.content.save({ backgroundImage: this.backgroundImage() }).catch(err => console.error('Background save failed:', err));
+    });
+    input.value = '';
   }
 
   /* ---------- MISC ---------- */
