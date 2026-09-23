@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ContentService, SwechaContent } from './content.service';
+import { ContentService, SwechhaContent } from './content.service';
 
 /* =========================================================
    DATA MODELS
@@ -94,7 +94,7 @@ export class App implements AfterViewChecked, OnDestroy {
   isLoggedIn = signal(false);
   isLoading = signal(false);
   loadingProgress = signal(0);
-  loadingStatusText = signal('INITIATING SWECHA INTERFACE');
+  loadingStatusText = signal('INITIATING SWECHHA INTERFACE');
   bootLines = signal<string[]>([]);
   scrollProgress = signal(0);
   glitchActive = signal(false);
@@ -104,19 +104,32 @@ export class App implements AfterViewChecked, OnDestroy {
 
   private loadingTimer: any = null;
   private dockTimer: any = null;
+
+  /* Slowed-down, more suspenseful boot sequence — a restricted-system
+     "authenticating you" feel rather than a snappy progress bar. Each
+     status stage holds for a while and the boot feed reveals itself
+     unevenly with pauses and stutters. */
   private readonly loadingStatusSteps = [
-    'INITIATING SWECHA INTERFACE',
+    'INITIATING SWECHHA INTERFACE',
+    'ESTABLISHING SECURE UPLINK',
     'AUTH HANDSHAKE IN PROGRESS',
+    'VERIFYING OPERATOR CREDENTIALS',
     'DECRYPTING STORY PACKETS',
+    'BYPASSING TRACE COUNTERMEASURES',
     'CALIBRATING VISUAL CORTEX',
     'SESSION STABILIZING'
   ];
   private readonly bootFeedLines = [
-    '> SWECHA_OS: cold boot',
+    '> SWECHHA_OS: cold boot',
     '> identity layer: waking',
     '> credential stream: detected',
+    '> access level: unverified',
+    '> tracing origin node...',
+    '> origin node: masked',
     '> narrative packets: loading',
+    '> integrity check: passed',
     '> visual cortex: calibrating',
+    '> firewall handshake: complete',
     '> session handshake: complete'
   ];
 
@@ -158,15 +171,18 @@ export class App implements AfterViewChecked, OnDestroy {
      in the constructor. Admin edits are written back to Firestore
      in saveSection(), which is called when a section's "Done
      editing" / "SAVE" button is pressed.
+
+     Every section seeds with exactly ONE item — admin uses the
+     "+ Add" controls to grow it from there.
      ========================================================= */
 
   logline = signal(
     'A city on the edge of collapse. A platform that promises freedom. ' +
-      'SWECHA follows one operator who discovers the system she trusts is the one erasing her.'
+      'SWECHHA follows one operator who discovers the system she trusts is the one erasing her.'
   );
 
   synopsis = signal(
-    'Set in the near-future sprawl of Bhagyanagaram, SWECHA is a serialized thriller about ' +
+    'Set in the near-future sprawl of Bhagyanagaram, SWECHHA is a serialized thriller about ' +
       'surveillance, identity, and the cost of staying logged in. As the city\u2019s last independent network ' +
       'goes dark, our protagonist must decide whether to burn the system down or become part of it.'
   );
@@ -177,18 +193,6 @@ export class App implements AfterViewChecked, OnDestroy {
       title: 'EP 01 — WAKE',
       text: 'The system boots. Our protagonist logs in for what she believes is a routine shift, unaware the network has already flagged her.',
       image: 'https://placehold.co/500x700/0a0000/ff163d?text=EP+01'
-    },
-    {
-      id: 2,
-      title: 'EP 02 — SIGNAL',
-      text: 'A corrupted broadcast surfaces from outside the grid. It speaks her name.',
-      image: 'https://placehold.co/500x700/0a0000/00f7ff?text=EP+02'
-    },
-    {
-      id: 3,
-      title: 'EP 03 — BREACH',
-      text: 'Trust fractures inside the platform as the walls between user and system dissolve.',
-      image: 'https://placehold.co/500x700/0a0000/9b35ff?text=EP+03'
     }
   ]);
 
@@ -199,49 +203,25 @@ export class App implements AfterViewChecked, OnDestroy {
       role: 'Protagonist / Operator',
       description: 'A network technician who begins to suspect the platform she maintains is watching more than it protects.',
       photo: 'https://placehold.co/400x500/0a0000/ff163d?text=ARYA'
-    },
-    {
-      id: 2,
-      name: 'THE ARCHITECT',
-      role: 'Antagonist / System Voice',
-      description: 'Unseen and omnipresent, the Architect built SWECHA to save the city — and never asked what it would cost.',
-      photo: 'https://placehold.co/400x500/0a0000/00f7ff?text=ARCHITECT'
-    },
-    {
-      id: 3,
-      name: 'KABIR RAO',
-      role: 'Ally / Signal Runner',
-      description: 'A former operator living off-grid, feeding Arya fragments of the truth from outside the system.',
-      photo: 'https://placehold.co/400x500/0a0000/49ff69?text=KABIR'
     }
   ]);
 
   moodBoard = signal<MoodImage[]>([
-    { id: 1, src: 'https://placehold.co/600x400/0a0000/ff163d?text=MOOD+01', caption: 'Neon-soaked skyline' },
-    { id: 2, src: 'https://placehold.co/600x400/0a0000/00f7ff?text=MOOD+02', caption: 'Terminal interiors' },
-    { id: 3, src: 'https://placehold.co/600x400/0a0000/9b35ff?text=MOOD+03', caption: 'Signal interference' },
-    { id: 4, src: 'https://placehold.co/600x400/0a0000/ff2aa8?text=MOOD+04', caption: 'Crowd surveillance' }
+    { id: 1, src: 'https://placehold.co/720x1280/0a0000/ff163d?text=MOOD+01', caption: 'Neon-soaked skyline' }
   ]);
 
   technicalities = signal<TechItem[]>([
     {
       id: 1,
-      image: 'https://placehold.co/400x700/0a0000/ff163d?text=TECH+01',
+      image: 'https://placehold.co/720x1280/0a0000/ff163d?text=TECH+01',
       heading: 'FORMAT',
       text: 'An 8-episode limited series, 30–40 minutes per episode, shot in a hybrid of practical neon lighting and desaturated urban exteriors.',
       links: [{ id: 1, label: 'Series Bible (PDF)', url: 'https://example.com/series-bible' }]
-    },
-    {
-      id: 2,
-      image: 'https://placehold.co/400x700/0a0000/00f7ff?text=TECH+02',
-      heading: 'VISUAL LANGUAGE',
-      text: 'Glitch and scanline motifs are diegetic — every distortion on screen represents the system itself reacting to the story.',
-      links: []
     }
   ]);
 
   directorsNotesText = signal(
-    'SWECHA started as a question: what happens when the platform meant to protect a city ' +
+    'SWECHHA started as a question: what happens when the platform meant to protect a city ' +
       'becomes the thing everyone is afraid of? This project is my attempt to make surveillance feel personal again — ' +
       'not abstract, not political theatre, just one person realizing the system knows her better than she knows herself.'
   );
@@ -262,7 +242,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   aboutMe = signal<{ photo: string; bio: string; links: AboutLink[] }>({
     photo: 'https://placehold.co/400x500/0a0000/ff163d?text=DIRECTOR',
-    bio: 'I\u2019m a writer-director working at the intersection of thriller and speculative fiction. SWECHA is my ' +
+    bio: 'I\u2019m a writer-director working at the intersection of thriller and speculative fiction. SWECHHA is my ' +
       'first serialized project, built from years of watching how cities and platforms quietly reshape each other.',
     links: [
       { id: 1, label: 'Portfolio', url: 'https://example.com' },
@@ -302,7 +282,7 @@ export class App implements AfterViewChecked, OnDestroy {
   }
 
   /** Builds the full-content object Firestore expects, from current signal values. */
-  private snapshotContent(): SwechaContent {
+  private snapshotContent(): SwechhaContent {
     return {
       logline: this.logline(),
       synopsis: this.synopsis(),
@@ -319,7 +299,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /** Pushes just the fields for one section up to Firestore. */
   private saveSection(section: string): void {
-    let partial: Partial<SwechaContent> | null = null;
+    let partial: Partial<SwechhaContent> | null = null;
     switch (section) {
       case 'logline':
         partial = { logline: this.logline() };
@@ -439,27 +419,60 @@ export class App implements AfterViewChecked, OnDestroy {
     }
   }
 
+  /**
+   * Deliberately slow, uneven boot sequence — this should feel like you're
+   * being let into somewhere you're not quite supposed to be, not like a
+   * normal app loading. Ticks are slower (~420ms instead of ~220ms), the
+   * bar creeps rather than races, it stalls at a couple of points, and the
+   * boot feed staggers unevenly with its own timers instead of piggy-
+   * backing on the progress tick. Total time lands around 7–9 seconds.
+   */
   private startLoadingSequence(): void {
     this.isLoading.set(true);
     this.loadingProgress.set(0);
     this.bootLines.set([]);
     this.loadingStatusText.set(this.loadingStatusSteps[0]);
     let statusIndex = 0;
+
+    // Boot feed lines reveal on their own uneven cadence, independent of
+    // the progress bar, so the two never feel mechanically linked.
     let bootIndex = 0;
+    const scheduleNextBootLine = () => {
+      if (bootIndex >= this.bootFeedLines.length) return;
+      const delay = 260 + Math.random() * 20;
+      setTimeout(() => {
+        this.bootLines.update(lines => [...lines, this.bootFeedLines[bootIndex]]);
+        bootIndex += 1;
+        scheduleNextBootLine();
+      }, delay);
+    };
+    scheduleNextBootLine();
+
+    // A couple of points where the bar visibly stalls, like it's waiting
+    // on something outside its control — part of the "restricted system"
+    // feel rather than a smooth deterministic climb.
+    const stallPoints = [32 + Math.random() * 8, 68 + Math.random() * 8];
+    let stalledUntil = 0;
 
     this.loadingTimer = setInterval(() => {
-      const next = this.loadingProgress() + 6 + Math.random() * 14;
+      const now = Date.now();
+      if (now < stalledUntil) return;
+
+      const current = this.loadingProgress();
+      const nextStall = stallPoints.find(p => current < p);
+      if (nextStall !== undefined && current + 2 >= nextStall) {
+        this.loadingProgress.set(Math.min(nextStall, 100));
+        stalledUntil = now + 900 + Math.random() * 700;
+        return;
+      }
+
+      const next = current + 1.5 + Math.random() * 3.5;
       this.loadingProgress.set(Math.min(next, 100));
 
       const statusThreshold = Math.floor((this.loadingProgress() / 100) * this.loadingStatusSteps.length);
       if (statusThreshold > statusIndex && statusThreshold < this.loadingStatusSteps.length) {
         statusIndex = statusThreshold;
         this.loadingStatusText.set(this.loadingStatusSteps[statusIndex]);
-      }
-
-      if (bootIndex < this.bootFeedLines.length && Math.random() > 0.45) {
-        this.bootLines.update(lines => [...lines, this.bootFeedLines[bootIndex]]);
-        bootIndex += 1;
       }
 
       if (this.loadingProgress() >= 100) {
@@ -477,9 +490,9 @@ export class App implements AfterViewChecked, OnDestroy {
           this.dockTimer = setTimeout(() => {
             this.logoDocked.set(true);
           }, 700);
-        }, 450);
+        }, 550);
       }
-    }, 220);
+    }, 420);
   }
 
   /* =========================================================
@@ -637,7 +650,7 @@ export class App implements AfterViewChecked, OnDestroy {
       ...list,
       {
         id: this.nextId(),
-        image: 'https://placehold.co/400x700/0a0000/ff163d?text=NEW',
+        image: '',
         heading: 'NEW SECTION',
         text: 'Details go here.',
         links: []

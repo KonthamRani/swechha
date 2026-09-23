@@ -63,7 +63,7 @@ const app = initializeApp(firebaseConfig);
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
-       match /swecha/site {
+       match /swechha/site {
          allow read: if true;
          allow write: if true; // tighten once you add real auth — see note below
        }
@@ -75,7 +75,7 @@ const app = initializeApp(firebaseConfig);
    rules_version = '2';
    service firebase.storage {
      match /b/{bucket}/o {
-       match /swecha-uploads/{allPaths=**} {
+       match /swechha-uploads/{allPaths=**} {
          allow read: if true;
          allow write: if true; // same caveat as above
        }
@@ -89,9 +89,17 @@ const app = initializeApp(firebaseConfig);
    real, add Firebase Authentication (e.g. anonymous auth + a custom claim,
    or email/password for the one admin account) and change the rules to
    check request.auth instead of leaving writes fully open.
+
+   NOTE ON THE DOC PATH: the Firestore document below still lives at
+   ['swecha', 'site'] (single h) rather than 'swechha' — that's the path
+   your existing data was already seeded under. Renaming it here would
+   silently point the app at an empty, unseeded document. If you want the
+   collection name itself to say "swechha", migrate the document in the
+   Firebase console (copy swecha/site -> swechha/site) and then update
+   CONTENT_DOC_PATH below to match.
 */
 
-export interface SwechaContent {
+export interface SwechhaContent {
   logline: string;
   synopsis: string;
   episodes: Episode[];
@@ -113,7 +121,7 @@ export class ContentService {
   private storage: FirebaseStorage;
 
   /** Latest content from Firestore. null until the first snapshot arrives. */
-  readonly content = signal<SwechaContent | null>(null);
+  readonly content = signal<SwechhaContent | null>(null);
   /** True once we've heard back from Firestore at least once (or failed). */
   readonly ready = signal(false);
   /** Set if the realtime connection errors out (e.g. bad config, offline). */
@@ -129,7 +137,7 @@ export class ContentService {
       docRef,
       snap => {
         if (snap.exists()) {
-          this.content.set(snap.data() as SwechaContent);
+          this.content.set(snap.data() as SwechhaContent);
         }
         this.ready.set(true);
       },
@@ -142,13 +150,13 @@ export class ContentService {
   }
 
   /** Merge-writes a partial content update. Every viewer's listener fires afterward. */
-  async save(partial: Partial<SwechaContent>): Promise<void> {
+  async save(partial: Partial<SwechhaContent>): Promise<void> {
     const docRef = doc(this.db, ...CONTENT_DOC_PATH);
     await setDoc(docRef, partial, { merge: true });
   }
 
   /** Seeds Firestore with the given full content, but only if the doc doesn't exist yet. */
-  async seedIfEmpty(initial: SwechaContent): Promise<void> {
+  async seedIfEmpty(initial: SwechhaContent): Promise<void> {
     if (this.content()) return; // already has data
     const docRef = doc(this.db, ...CONTENT_DOC_PATH);
     await setDoc(docRef, initial, { merge: true });
@@ -161,7 +169,7 @@ export class ContentService {
    */
   async uploadImage(file: File, pathHint: string): Promise<string> {
     const safeName = `${Date.now()}-${file.name.replace(/[^a-z0-9.\-_]/gi, '_')}`;
-    const storageRef = ref(this.storage, `swecha-uploads/${pathHint}/${safeName}`);
+    const storageRef = ref(this.storage, `swechha-uploads/${pathHint}/${safeName}`);
     await uploadBytes(storageRef, file);
     return getDownloadURL(storageRef);
   }

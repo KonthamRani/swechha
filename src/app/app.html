@@ -8,7 +8,7 @@
     <div class="bg-scanlines"></div>
 
     <div class="login-card">
-      <h1 class="glitch-title" data-text="SWECHA">SWECHA</h1>
+      <img class="brand-logo" src="../assets/swechha-logo.png" alt="SWECHHA" />
       <p class="login-sub">SYSTEM ACCESS TERMINAL</p>
 
       <form (ngSubmit)="login()" class="login-form">
@@ -47,7 +47,7 @@
     <div class="bg-scanlines"></div>
 
     <div class="loading-inner">
-      <h2 class="glitch-title small" data-text="SWECHA">SWECHA</h2>
+      <img class="brand-logo small" src="../assets/swechha-logo.png" alt="SWECHHA" />
       <p class="loading-status">{{ loadingStatusText() }}</p>
 
       <div class="loading-bar-track">
@@ -67,7 +67,7 @@
        throughout, so the dock is a pure CSS transform transition.
        ============================================================ -->
   <div class="logo-anchor" *ngIf="isLoggedIn()" [class.docked]="logoDocked()">
-    <span class="logo-mark glitch-title" data-text="SWECHA">SWECHA</span>
+    <img class="logo-mark-img" src="../assets/swechha-icon.png" alt="SWECHHA" />
   </div>
 
   <!-- ============================================================
@@ -80,6 +80,11 @@
     <div class="bg-vignette fixed"></div>
     <div class="glitch-cut" [class.fire]="glitchActive()"></div>
 
+    <!-- ambient background wordmark for admin mode -->
+    <div class="admin-bg-logo" *ngIf="isAdmin" aria-hidden="true">
+      <img src="../assets/swechha-icon.png" alt="" />
+    </div>
+
     <!-- scroll progress -->
     <div class="scroll-progress-track">
       <div class="scroll-progress-fill" [style.width.%]="scrollProgress()"></div>
@@ -88,7 +93,7 @@
     <!-- top hud -->
     <header class="top-hud" [class.docked]="logoDocked()">
       <span class="hud-title">
-        SWECHA // <b [class.is-admin]="isAdmin">{{ isAdmin ? 'ADMIN ACCESS' : 'VIEWER ACCESS' }}</b>
+        SWECHHA // <b [class.is-admin]="isAdmin">{{ isAdmin ? 'ADMIN ACCESS' : 'VIEWER ACCESS' }}</b>
       </span>
       <button class="btn ghost small" (click)="logout()">LOGOUT</button>
     </header>
@@ -151,7 +156,7 @@
 
         <div class="card-grid episodes-grid">
           <article class="glass-card" *ngFor="let ep of episodes(); trackBy: trackById">
-            <div class="card-image-wrap portrait">
+            <div class="card-image-wrap portrait small-image">
               <img [src]="ep.image" [alt]="ep.title" />
               <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
                 📷
@@ -226,7 +231,7 @@
         <div class="section-tag">05 // MOOD BOARD</div>
 
         <div class="mood-grid">
-          <figure class="mood-tile" *ngFor="let m of moodBoard(); trackBy: trackById">
+          <figure class="mood-tile portrait-tile" *ngFor="let m of moodBoard(); trackBy: trackById">
             <img [src]="m.src" [alt]="m.caption || 'Mood board image'" />
             <figcaption *ngIf="m.caption">{{ m.caption }}</figcaption>
             <button class="tile-remove" *ngIf="isAdmin && editing['moodboard']" (click)="removeMoodImage(m.id)">✕</button>
@@ -252,13 +257,17 @@
 
         <div class="tech-stack">
           <article class="tech-row" *ngFor="let item of technicalities(); trackBy: trackById">
-            <div class="card-image-wrap portrait tall">
+            <div class="card-image-wrap portrait tall" *ngIf="item.image">
               <img [src]="item.image" [alt]="item.heading" />
               <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
                 📷
                 <input type="file" accept="image/*" hidden (change)="onImageChange($event, item, 'image')" />
               </label>
             </div>
+            <label class="image-edit-btn add-image-btn" *ngIf="isAdmin && !item.image" title="Add image">
+              📷
+              <input type="file" accept="image/*" hidden (change)="onImageChange($event, item, 'image')" />
+            </label>
 
             <div class="tech-copy">
               <ng-container *ngIf="!editing['technicalities']; else techEdit">
@@ -425,7 +434,7 @@
     </main>
 
     <footer class="site-footer">
-      <p>SWECHA SYSTEM // END OF TRANSMISSION</p>
+      <p>SWECHHA SYSTEM // END OF TRANSMISSION</p>
     </footer>
   </ng-container>
 </div>

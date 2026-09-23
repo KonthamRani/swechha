@@ -1,5 +1,5 @@
 /* =========================================================
-   SWECHA — ANGULAR COMPONENT STYLES
+   SWECHHA — ANGULAR COMPONENT STYLES
    Palette / type / motion language ported from the reference
    glitch system (index_super_glitch.html).
    ========================================================= */
@@ -106,52 +106,20 @@ button, input, textarea, select {
 }
 
 /* =========================================================
-   GLITCH TITLE TEXT
+   BRAND LOGO IMAGE (login card + loading screen)
+   Replaces the old CSS glitch-text title with the actual
+   SWECHHA mark (icon + wordmark) exported from the reference
+   HTML's embedded assets.
    ========================================================= */
-.glitch-title {
-  position: relative;
-  margin: 0;
-  font-family: var(--system-font);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  font-size: clamp(2.6rem, 12vw, 4.6rem);
-  line-height: 1;
-  color: var(--ink);
-  text-shadow: 0 0 14px var(--red), 0 0 34px rgba(255, 22, 61, 0.5);
-  text-transform: uppercase;
+.brand-logo {
+  display: block;
+  margin: 0 auto 6px;
+  width: min(60vw, 220px);
+  height: auto;
+  filter: drop-shadow(0 0 22px rgba(255, 22, 61, 0.45));
 }
-.glitch-title.small { font-size: clamp(1.8rem, 8vw, 2.6rem); }
-.glitch-title::before,
-.glitch-title::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  clip-path: inset(0 0 0 0);
-}
-.glitch-title::before {
-  color: var(--cyan);
-  mix-blend-mode: screen;
-  animation: glitchShiftA 3.4s infinite linear;
-}
-.glitch-title::after {
-  color: var(--red);
-  mix-blend-mode: screen;
-  animation: glitchShiftB 2.6s infinite linear;
-}
-@keyframes glitchShiftA {
-  0%, 92%, 100% { transform: translate(0, 0); opacity: 0; clip-path: inset(0 0 90% 0); }
-  93% { transform: translate(-3px, 1px); opacity: 0.8; clip-path: inset(10% 0 60% 0); }
-  95% { transform: translate(2px, -1px); opacity: 0.7; clip-path: inset(55% 0 15% 0); }
-  97% { transform: translate(-1px, 0); opacity: 0; clip-path: inset(0 0 90% 0); }
-}
-@keyframes glitchShiftB {
-  0%, 88%, 100% { transform: translate(0, 0); opacity: 0; clip-path: inset(0 0 92% 0); }
-  89% { transform: translate(3px, -1px); opacity: 0.7; clip-path: inset(20% 0 40% 0); }
-  91% { transform: translate(-2px, 1px); opacity: 0.75; clip-path: inset(60% 0 10% 0); }
-  93% { transform: translate(1px, 0); opacity: 0; clip-path: inset(0 0 92% 0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .glitch-title::before, .glitch-title::after { animation: none; opacity: 0; }
+.brand-logo.small {
+  width: min(48vw, 170px);
 }
 
 /* =========================================================
@@ -171,22 +139,56 @@ button, input, textarea, select {
     transform 0.85s cubic-bezier(0.16, 0.8, 0.24, 1);
   will-change: top, left, transform;
 }
-.logo-anchor .logo-mark {
+.logo-mark-img {
   display: block;
+  width: min(46vw, 200px);
+  height: auto;
   margin: 0;
-  white-space: nowrap;
+  filter: drop-shadow(0 0 26px rgba(255, 22, 61, 0.5));
 }
 .logo-anchor.docked {
   top: max(18px, env(safe-area-inset-top, 0px) + 10px);
   left: max(16px, env(safe-area-inset-left, 0px) + 14px);
-  transform: translate(0, 0) scale(0.3);
+  transform: translate(0, 0) scale(0.26);
   transform-origin: top left;
 }
 @media (max-width: 640px) {
-  .logo-anchor.docked { transform: translate(0, 0) scale(0.24); }
+  .logo-anchor.docked { transform: translate(0, 0) scale(0.22); }
 }
 @media (prefers-reduced-motion: reduce) {
   .logo-anchor { transition: none; }
+}
+
+/* =========================================================
+   ADMIN-MODE AMBIENT BACKGROUND LOGO
+   A large, blurred, low-opacity mark that drifts very slowly
+   behind admin content — a "you're inside the system" cue
+   that stays out of the way of reading and editing.
+   ========================================================= */
+.admin-bg-logo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+.admin-bg-logo img {
+  width: min(70vw, 900px);
+  height: auto;
+  opacity: 0.07;
+  filter: blur(6px) saturate(1.4);
+  animation: adminLogoDrift 26s ease-in-out infinite;
+}
+@keyframes adminLogoDrift {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.06; }
+  25% { transform: translate(1.5%, -1%) scale(1.03) rotate(0.4deg); opacity: 0.09; }
+  50% { transform: translate(-1%, 1.5%) scale(1.06) rotate(-0.3deg); opacity: 0.05; }
+  75% { transform: translate(1%, 1%) scale(1.02) rotate(0.2deg); opacity: 0.08; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-bg-logo img { animation: none; }
 }
 
 /* =========================================================
@@ -317,7 +319,7 @@ label.btn input[type="file"] { display: none; }
   height: 100%;
   background: linear-gradient(90deg, var(--red), var(--hot), var(--cyan));
   box-shadow: 0 0 16px var(--red), 0 0 28px rgba(255, 0, 79, 0.6);
-  transition: width 0.2s linear;
+  transition: width 0.4s ease-out;
 }
 .loading-pct {
   margin: 10px 0 0;
@@ -333,7 +335,7 @@ label.btn input[type="file"] { display: none; }
   line-height: 1.6;
   color: rgba(73, 255, 105, 0.72);
   text-shadow: 0 0 10px rgba(73, 255, 105, 0.4);
-  min-height: 120px;
+  min-height: 180px;
 }
 .boot-feed p { margin: 0 0 4px; animation: terminalLine 0.5s ease forwards; }
 @keyframes terminalLine {
@@ -405,12 +407,12 @@ label.btn input[type="file"] { display: none; }
 }
 .content-slide {
   position: relative;
-  min-height: 100svh;
-  padding: clamp(28px, 6vw, 72px) clamp(18px, 6vw, 80px);
+  min-height: auto;
+  padding: clamp(20px, 4vw, 40px) clamp(18px, 6vw, 80px);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 22px;
+  gap: 18px;
   max-width: 1180px;
   margin: 0 auto;
   opacity: 0;
@@ -564,6 +566,19 @@ label.btn input[type="file"] { display: none; }
 .card-image-wrap.round { border-radius: 50%; aspect-ratio: 1; width: min(220px, 46vw); }
 .card-image-wrap.round img { aspect-ratio: 1; object-fit: cover; }
 
+/* Episodic synopsis: text is the priority, so the photo is a small
+   supporting thumbnail rather than the dominant element. */
+.card-image-wrap.small-image {
+  width: min(140px, 40%);
+  float: left;
+  margin: 0 14px 8px 0;
+  shape-outside: margin-box;
+}
+.card-image-wrap.small-image img { aspect-ratio: 3 / 4; }
+@media (max-width: 480px) {
+  .card-image-wrap.small-image { width: 96px; }
+}
+
 .image-edit-btn {
   position: absolute;
   bottom: 10px;
@@ -581,9 +596,15 @@ label.btn input[type="file"] { display: none; }
   box-shadow: 0 0 16px rgba(255, 22, 61, 0.3);
 }
 .image-edit-btn:hover { background: rgba(255, 22, 61, 0.28); }
+.image-edit-btn.add-image-btn {
+  position: static;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+}
 
 /* =========================================================
-   MOOD BOARD GRID
+   MOOD BOARD GRID — portrait 9:16 tiles, 4 per row on desktop
    ========================================================= */
 .mood-grid {
   display: grid;
@@ -607,6 +628,11 @@ label.btn input[type="file"] { display: none; }
   object-fit: cover;
   display: block;
   transition: transform 0.4s ease;
+}
+/* Mood board images specifically are portrait 9:16, per section brief;
+   director's-notes tiles (same .mood-tile class) stay landscape 3:2. */
+.mood-tile.portrait-tile img {
+  aspect-ratio: 9 / 16;
 }
 .mood-tile:hover img { transform: scale(1.06); }
 .mood-tile figcaption {
@@ -637,9 +663,11 @@ label.btn input[type="file"] { display: none; }
 }
 
 /* =========================================================
-   TECHNICALITIES
+   TECHNICALITIES — same portrait-image treatment as the mood
+   board; sections with no image just show as plain content,
+   no empty placeholder box.
    ========================================================= */
-.tech-stack { display: grid; gap: 26px; }
+.tech-stack { display: grid; gap: 22px; }
 .tech-row {
   display: grid;
   grid-template-columns: 1fr;
@@ -650,9 +678,10 @@ label.btn input[type="file"] { display: none; }
   background: rgba(0, 0, 0, 0.32);
 }
 @media (min-width: 720px) {
-  .tech-row { grid-template-columns: 180px 1fr; align-items: start; }
+  .tech-row { grid-template-columns: 160px 1fr; align-items: start; }
 }
-.tech-row .card-image-wrap { width: 100%; max-width: 220px; }
+.tech-row .card-image-wrap { width: 100%; max-width: 160px; }
+.tech-row .card-image-wrap.tall img { aspect-ratio: 9 / 16; }
 .tech-copy h3 {
   margin: 0 0 8px;
   font-size: 1rem;
