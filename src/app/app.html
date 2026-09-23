@@ -6,7 +6,7 @@
        screen (login, loading, main site) so it never "pops in".
        ============================================================ -->
   <div class="bg-reference-overlay" [class.glitchy]="glitchActive()">
-    <img [src]="backgroundImage().url || '../assets/background-overlay-reference.png'" alt="" aria-hidden="true" />
+    <img [src]="backgroundImage().url || '/assets/background-overlay-reference.png'" alt="" aria-hidden="true" />
   </div>
 
   <!-- ============================================================
@@ -17,7 +17,7 @@
     <div class="bg-scanlines"></div>
 
     <div class="login-card">
-      <img class="brand-logo" src="../assets/swechha-logo.png" alt="SWECHHA" />
+      <img class="brand-logo" src="/assets/swechha-logo.png" alt="SWECHHA" />
       <p class="login-sub">SYSTEM ACCESS TERMINAL</p>
 
       <form (ngSubmit)="login()" class="login-form">
@@ -56,7 +56,7 @@
     <div class="bg-scanlines"></div>
 
     <div class="loading-inner">
-      <img class="brand-logo small" src="../assets/swechha-logo.png" alt="SWECHHA" />
+      <img class="brand-logo small" src="assets/swechha-logo.png" alt="SWECHHA" />
       <p class="loading-status">{{ loadingStatusText() }}</p>
 
       <div class="loading-bar-track">
@@ -75,7 +75,7 @@
        corner once the session finishes stabilizing.
        ============================================================ -->
   <div class="logo-anchor" *ngIf="isLoggedIn()" [class.docked]="logoDocked()">
-    <img class="logo-mark-img" src="../assets/swechha-icon.png" alt="SWECHHA" />
+    <img class="logo-mark-img" src="assets/swechha-icon.png" alt="SWECHHA" />
   </div>
 
   <!-- ============================================================
@@ -90,7 +90,7 @@
 
     <!-- admin-only ambient logo watermark -->
     <div class="admin-bg-logo" *ngIf="isAdmin" aria-hidden="true">
-      <img src="../assets/swechha-icon.png" alt="" />
+      <img src="assets/swechha-icon.png" alt="" />
     </div>
 
     <!-- scroll progress -->
