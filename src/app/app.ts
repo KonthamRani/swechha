@@ -97,8 +97,11 @@ export class App implements AfterViewChecked, OnDestroy {
   bootLines = signal<string[]>([]);
   scrollProgress = signal(0);
   glitchActive = signal(false);
-  logoDocked = signal(false);
   introDismissed = signal(false);
+
+  /** How long the post-login loader runs (seconds). Admin-controlled, synced via Firestore. */
+  loadingSeconds = signal(4);
+  private readonly DEFAULT_LOADING_SECONDS = 4;
 
   /* ---------- LIGHTBOX + CHARACTER CAROUSEL ---------- */
   lightbox = signal<{ images: string[]; index: number; alt: string } | null>(null);
@@ -113,7 +116,6 @@ export class App implements AfterViewChecked, OnDestroy {
   backgroundImage = signal<ImageRef>({ url: '' });
 
   private loadingTimer: any = null;
-  private dockTimer: any = null;
 
   private readonly loadingStatusSteps = [
     'SYSTEM INITIALIZING',
@@ -262,6 +264,7 @@ export class App implements AfterViewChecked, OnDestroy {
       }
       if (!this.editing['about'] && remote.aboutMe) this.aboutMe.set(remote.aboutMe);
       if (remote.backgroundImage?.url) this.backgroundImage.set(remote.backgroundImage);
+      if (remote.loadingSeconds !== undefined) this.loadingSeconds.set(this.clampLoading(remote.loadingSeconds));
     });
 
     effect(() => {
@@ -283,7 +286,8 @@ export class App implements AfterViewChecked, OnDestroy {
       directorsNotesImages: this.directorsNotesImages(),
       articles: this.articles(),
       aboutMe: this.aboutMe(),
-      backgroundImage: this.backgroundImage()
+      backgroundImage: this.backgroundImage(),
+      loadingSeconds: this.loadingSeconds()
     };
   }
 
@@ -371,7 +375,6 @@ export class App implements AfterViewChecked, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.loadingTimer) clearInterval(this.loadingTimer);
-    if (this.dockTimer) clearTimeout(this.dockTimer);
     if (this.noiseRafId !== null) cancelAnimationFrame(this.noiseRafId);
     if (this.revealObserver) this.revealObserver.disconnect();
     this.stopCarousel();
@@ -422,12 +425,10 @@ export class App implements AfterViewChecked, OnDestroy {
 
   logout(): void {
     if (this.loadingTimer) clearInterval(this.loadingTimer);
-    if (this.dockTimer) clearTimeout(this.dockTimer);
     this.stopCarousel();
     this.closeImage();
     this.isLoggedIn.set(false);
     this.isLoading.set(false);
-    this.logoDocked.set(false);
     this.introDismissed.set(false);
     this.isAdmin = false;
     this.username = '';
@@ -444,9 +445,22 @@ export class App implements AfterViewChecked, OnDestroy {
     }
   }
 
+  private clampLoading(v: unknown): number {
+    return Math.min(30, Math.max(1, Number(v) || this.DEFAULT_LOADING_SECONDS));
+  }
+
+  /** Admin control: set how long the loader appears (1–30 seconds). */
+  updateLoadingSeconds(value: unknown): void {
+    const secs = this.clampLoading(value);
+    this.loadingSeconds.set(secs);
+    this.content.save({ loadingSeconds: secs }).catch(err => console.error('Loading time save failed:', err));
+  }
+
   /**
    * SYSTEM INITIALIZING -> VERIFYING ACCESS -> LOADING ARCHIVE ->
-   * DECRYPTING CONTENT -> ACCESS GRANTED, ~3.5–4s total.
+   * DECRYPTING CONTENT -> ACCESS GRANTED.
+   * Progress is driven by elapsed time, so the loader lasts exactly
+   * `loadingSeconds()` seconds (set by the admin).
    */
   private startLoadingSequence(): void {
     this.isLoading.set(true);
@@ -454,37 +468,42 @@ export class App implements AfterViewChecked, OnDestroy {
     this.loadingProgress.set(0);
     this.bootLines.set([]);
     this.loadingStatusText.set(this.loadingStatusSteps[0]);
+
+    const totalMs = this.clampLoading(this.loadingSeconds()) * 1000;
+    const startedAt = Date.now();
     let statusIndex = 0;
     let bootIndex = 0;
 
+    if (this.loadingTimer) clearInterval(this.loadingTimer);
     this.loadingTimer = setInterval(() => {
-      const next = this.loadingProgress() + 3.5 + Math.random() * 5;
-      this.loadingProgress.set(Math.min(next, 100));
+      const progress = Math.min(100, ((Date.now() - startedAt) / totalMs) * 100);
+      this.loadingProgress.set(progress);
 
-      const statusThreshold = Math.floor((this.loadingProgress() / 100) * this.loadingStatusSteps.length);
+      const statusThreshold = Math.floor((progress / 100) * this.loadingStatusSteps.length);
       if (statusThreshold > statusIndex && statusThreshold < this.loadingStatusSteps.length) {
         statusIndex = statusThreshold;
         this.loadingStatusText.set(this.loadingStatusSteps[statusIndex]);
       }
 
-      if (bootIndex < this.bootFeedLines.length && Math.random() > 0.4) {
-        this.bootLines.update(lines => [...lines, this.bootFeedLines[bootIndex]]);
+      const bootTarget = Math.floor((progress / 100) * this.bootFeedLines.length);
+      while (bootIndex < bootTarget && bootIndex < this.bootFeedLines.length) {
+        const line = this.bootFeedLines[bootIndex];
+        this.bootLines.update(lines => [...lines, line]);
         bootIndex += 1;
       }
 
-      if (this.loadingProgress() >= 100) {
-        this.loadingStatusText.set('ACCESS GRANTED');
+      if (progress >= 100) {
         clearInterval(this.loadingTimer);
+        this.loadingTimer = null;
+        this.loadingStatusText.set('ACCESS GRANTED');
         setTimeout(() => {
           this.isLoading.set(false);
           this.isLoggedIn.set(true);
           this.startCarousel();
-          this.logoDocked.set(false);
           this.triggerGlitch();
-          this.dockTimer = setTimeout(() => this.logoDocked.set(true), 650);
         }, 400);
       }
-    }, 190);
+    }, 60);
   }
 
   triggerGlitch(): void {

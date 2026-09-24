@@ -1,4 +1,17 @@
 <div class="swecha-root">
+  <!-- Turns a dark image background transparent so the icon renders as a clean logo shape -->
+  <svg class="logo-filter-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="logo-clean" color-interpolation-filters="sRGB" x="0" y="0" width="100%" height="100%">
+        <feColorMatrix in="SourceGraphic" type="matrix" result="lum"
+          values="1 0 0 0 0
+                  0 1 0 0 0
+                  0 0 1 0 0
+                  6 6 6 0 -0.6" />
+        <feComposite in="lum" in2="SourceGraphic" operator="in" />
+      </filter>
+    </defs>
+  </svg>
   <div class="bg-reference-overlay" [class.glitchy]="glitchActive()">
     <img [src]="backgroundImage().url || '/assets/background-overlay-reference.png'" alt="" aria-hidden="true" />
   </div>
@@ -48,10 +61,6 @@
     </div>
   </section>
 
-  <div class="logo-anchor" *ngIf="isLoggedIn()" [class.docked]="logoDocked()">
-    <img class="logo-mark-img" src="assets/swechha-icon.png" alt="SWECHHA" />
-  </div>
-
   <ng-container *ngIf="isLoggedIn()">
     <canvas class="noise-canvas" #noiseCanvas></canvas>
     <div class="bg-scanlines fixed"></div>
@@ -86,12 +95,24 @@
       </div>
     </section>
 
-    <header class="top-hud" *ngIf="introDismissed()" [class.docked]="logoDocked()">
+    <header class="top-hud" *ngIf="introDismissed()">
       <span class="hud-title">
         SWECHHA // <b [class.is-admin]="isAdmin">{{ isAdmin ? 'ADMIN ACCESS' : 'VIEWER ACCESS' }}</b>
       </span>
 
       <div class="hud-actions">
+        <label class="loading-time-field" *ngIf="isAdmin" title="How long the login loader appears">
+          <span>LOADER (s)</span>
+          <input
+            type="number"
+            class="edit-input"
+            min="1"
+            max="30"
+            step="1"
+            [value]="loadingSeconds()"
+            (change)="updateLoadingSeconds($any($event.target).value)" />
+        </label>
+
         <div class="background-url-field" *ngIf="isAdmin">
           <input
             type="url"
