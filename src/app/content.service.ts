@@ -57,6 +57,7 @@ export interface SwechhaContent {
   aboutMe: { photo: string; bio: string; links: AboutLink[] };
   /** Large blurred backdrop image behind the whole site. Admin-editable, same as any other image. */
   backgroundImage?: ImageRef;
+  loadingSeconds?: number;
 }
 
 const CONTENT_DOC_PATH = ['swechha', 'site'] as const;
