@@ -13,7 +13,7 @@
     </defs>
   </svg>
   <div class="bg-reference-overlay" [class.glitchy]="glitchActive()">
-    <img [src]="backgroundImage().url || '/assets/background-overlay-reference.png'" alt="" aria-hidden="true" />
+    <img [src]="backgroundImage().url || 'assets/background-overlay-reference.png'" alt="" aria-hidden="true" />
   </div>
 
   <section class="login-screen" *ngIf="!isLoggedIn() && !isLoading()">
