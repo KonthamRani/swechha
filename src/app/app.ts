@@ -12,7 +12,6 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, SwechhaContent } from './content.service';
-import { StorageService, StorageFolders } from './storage.service';
 
 /* =========================================================
    DATA MODELS
@@ -31,7 +30,6 @@ export interface Episode {
   title: string;
   text: string;
   image: string;
-  imagePath?: string;
 }
 
 export interface CharacterEntry {
@@ -40,13 +38,11 @@ export interface CharacterEntry {
   role: string;
   description: string;
   photo: string;
-  photoPath?: string;
 }
 
 export interface MoodImage {
   id: number;
   src: string;
-  srcPath?: string;
   caption: string;
 }
 
@@ -59,7 +55,6 @@ export interface TechLink {
 export interface TechItem {
   id: number;
   image: string;
-  imagePath?: string;
   heading: string;
   text: string;
   links: TechLink[];
@@ -71,7 +66,6 @@ export interface Article {
   description: string;
   link: string;
   image: string;
-  imagePath?: string;
 }
 
 export interface AboutLink {
@@ -91,7 +85,6 @@ export interface AboutLink {
 })
 export class App implements AfterViewChecked, OnDestroy {
   private content = inject(ContentService);
-  private storage = inject(StorageService);
 
   /* ---------- AUTH STATE ---------- */
   username = '';
@@ -109,8 +102,6 @@ export class App implements AfterViewChecked, OnDestroy {
   glitchActive = signal(false);
   logoDocked = signal(false);
 
-  /** Per-image upload progress, keyed e.g. 'ep-3', 'char-1', 'background'. Absent key = not uploading. */
-  uploadProgress = signal<Record<string, number>>({});
 
   /** Large ambient backdrop image (section 10 of the spec). Falls back to a bundled asset until an admin overrides it. */
   backgroundImage = signal<ImageRef>({ url: '' });
@@ -522,68 +513,15 @@ export class App implements AfterViewChecked, OnDestroy {
     if (wasEditing) this.saveSection(section);
   }
 
-  /* =========================================================
-     IMAGE UPLOAD — shared plumbing
-     ========================================================= */
-  private setProgress(key: string, pct: number | undefined): void {
-    this.uploadProgress.update(m => {
-      const next = { ...m };
-      if (pct === undefined) delete next[key];
-      else next[key] = pct;
-      return next;
-    });
-  }
 
-  private async handleUpload(
-    file: File,
-    folder: string,
-    baseName: string,
-    key: string,
-    oldPath: string | undefined,
-    apply: (result: { url: string; path: string }) => void
-  ): Promise<void> {
-    this.setProgress(key, 0);
-    try {
-      const result = await this.storage.uploadImage(file, folder, baseName, pct => this.setProgress(key, pct));
-      apply(result);
-      this.setProgress(key, undefined);
-      if (oldPath) this.storage.deleteImage(oldPath).catch(() => {});
-    } catch (err) {
-      console.error('Image upload failed:', err);
-      this.setProgress(key, undefined);
-    }
-  }
 
-  /** Replaces/sets an image on an existing item (episode, character, tech item, article, about-me). */
-  onImageChange(event: Event, target: any, field: string, folder: string, key: string, pathField?: string): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const pf = pathField ?? `${field}Path`;
-    const oldPath = target[pf];
-    this.handleUpload(file, folder, key, key, oldPath, result => {
-      target[field] = result.url;
-      target[pf] = result.path;
-    });
-    input.value = '';
-  }
-
-  /* ---------- FOLDER HELPERS (used from the template) ---------- */
-  episodeFolder(id: number): string { return StorageFolders.episode(id); }
-  characterFolder(id: number): string { return StorageFolders.character(id); }
-  moodFolder(id: number): string { return StorageFolders.moodBoard(id); }
-  techFolder(id: number): string { return StorageFolders.technicality(id); }
-  directorsImageFolder(id: number): string { return StorageFolders.directorsNoteImage(id); }
-  articleFolder(id: number): string { return StorageFolders.directorsArticle(id); }
 
   /* ---------- EPISODES ---------- */
   addEpisode(): void {
     this.episodes.update(list => [...list, { id: this.nextId(), title: '', text: '', image: '' }]);
   }
   removeEpisode(id: number): void {
-    const item = this.episodes().find(e => e.id === id);
-    this.episodes.update(list => list.filter(e => e.id !== id));
-    if (item?.imagePath) this.storage.deleteImage(item.imagePath).catch(() => {});
+    this.episodes.update(list => list.filter(ep => ep.id !== id));
   }
 
   /* ---------- CHARACTERS ---------- */
@@ -591,28 +529,12 @@ export class App implements AfterViewChecked, OnDestroy {
     this.characters.update(list => [...list, { id: this.nextId(), name: '', role: '', description: '', photo: '' }]);
   }
   removeCharacter(id: number): void {
-    const item = this.characters().find(c => c.id === id);
-    this.characters.update(list => list.filter(c => c.id !== id));
-    if (item?.photoPath) this.storage.deleteImage(item.photoPath).catch(() => {});
+    this.characters.update(list => list.filter(char => char.id !== id));
   }
 
-  /* ---------- MOOD BOARD ---------- */
-  addMoodImage(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const tempId = this.nextId();
-    const key = `mood-${tempId}`;
-    this.moodBoard.update(list => [...list, { id: tempId, src: '', caption: '' }]);
-    this.handleUpload(file, StorageFolders.moodBoard(tempId), key, key, undefined, result => {
-      this.moodBoard.update(list => list.map(m => (m.id === tempId ? { ...m, src: result.url, srcPath: result.path } : m)));
-    });
-    input.value = '';
-  }
-  removeMoodImage(id: number): void {
-    const item = this.moodBoard().find(m => m.id === id);
-    this.moodBoard.update(list => list.filter(m => m.id !== id));
-    if (item?.srcPath) this.storage.deleteImage(item.srcPath).catch(() => {});
+  updateBackgroundImageUrl(url: string): void {
+    this.backgroundImage.set({ url });
+    this.content.save({ backgroundImage: { url } }).catch(err => console.error('Background save failed:', err));
   }
 
   /* ---------- TECHNICALITIES ---------- */
@@ -622,7 +544,6 @@ export class App implements AfterViewChecked, OnDestroy {
   removeTechItem(id: number): void {
     const item = this.technicalities().find(t => t.id === id);
     this.technicalities.update(list => list.filter(t => t.id !== id));
-    if (item?.imagePath) this.storage.deleteImage(item.imagePath).catch(() => {});
   }
   addTechLink(item: TechItem): void {
     item.links.push({ id: this.nextId(), label: '', url: '' });
@@ -631,31 +552,27 @@ export class App implements AfterViewChecked, OnDestroy {
     item.links = item.links.filter(l => l.id !== linkId);
   }
 
-  /* ---------- DIRECTOR'S NOTES ---------- */
-  addDirectorsImage(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const tempId = this.nextId();
-    const key = `dirimg-${tempId}`;
-    this.directorsNotesImages.update(list => [...list, { id: tempId, src: '', caption: '' }]);
-    this.handleUpload(file, StorageFolders.directorsNoteImage(tempId), key, key, undefined, result => {
-      this.directorsNotesImages.update(list => list.map(i => (i.id === tempId ? { ...i, src: result.url, srcPath: result.path } : i)));
-    });
-    input.value = '';
+  addMoodImage(): void {
+    this.moodBoard.update(list => [...list, { id: this.nextId(), src: '', caption: '' }]);
+  }
+  removeMoodImage(id: number): void {
+    this.moodBoard.update(list => list.filter(item => item.id !== id));
+  }
+
+  addDirectorsImage(): void {
+    this.directorsNotesImages.update(list => [...list, { id: this.nextId(), src: '', caption: '' }]);
   }
   removeDirectorsImage(id: number): void {
-    const item = this.directorsNotesImages().find(i => i.id === id);
-    this.directorsNotesImages.update(list => list.filter(i => i.id !== id));
-    if (item?.srcPath) this.storage.deleteImage(item.srcPath).catch(() => {});
+    this.directorsNotesImages.update(list => list.filter(item => item.id !== id));
   }
+
+  /* ---------- DIRECTOR'S NOTES ---------- */
+
   addArticle(): void {
     this.articles.update(list => [...list, { id: this.nextId(), title: '', description: '', link: '', image: '' }]);
   }
   removeArticle(id: number): void {
-    const item = this.articles().find(a => a.id === id);
-    this.articles.update(list => list.filter(a => a.id !== id));
-    if (item?.imagePath) this.storage.deleteImage(item.imagePath).catch(() => {});
+    this.articles.update(list => list.filter(item => item.id !== id));
   }
 
   /* ---------- ABOUT ME ---------- */
@@ -666,18 +583,6 @@ export class App implements AfterViewChecked, OnDestroy {
     this.aboutMe.update(a => ({ ...a, links: a.links.filter(l => l.id !== id) }));
   }
 
-  /* ---------- BACKGROUND OVERLAY ---------- */
-  onBackgroundImageChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const oldPath = this.backgroundImage().path;
-    this.handleUpload(file, StorageFolders.background(), 'overlay', 'background', oldPath, result => {
-      this.backgroundImage.set({ url: result.url, path: result.path });
-      this.content.save({ backgroundImage: this.backgroundImage() }).catch(err => console.error('Background save failed:', err));
-    });
-    input.value = '';
-  }
 
   /* ---------- MISC ---------- */
   trackById(_index: number, item: { id: number }): number {

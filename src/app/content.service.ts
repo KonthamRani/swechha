@@ -54,7 +54,7 @@ export interface SwechhaContent {
   directorsNotesText: string;
   directorsNotesImages: MoodImage[];
   articles: Article[];
-  aboutMe: { photo: string; photoPath?: string; bio: string; links: AboutLink[] };
+  aboutMe: { photo: string; bio: string; links: AboutLink[] };
   /** Large blurred backdrop image behind the whole site. Admin-editable, same as any other image. */
   backgroundImage?: ImageRef;
 }

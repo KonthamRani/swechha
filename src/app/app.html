@@ -1,17 +1,8 @@
 <div class="swecha-root">
-
-  <!-- ============================================================
-       BACKGROUND OVERLAY — large, blurred, low-opacity reference
-       image behind everything. Same element renders on every
-       screen (login, loading, main site) so it never "pops in".
-       ============================================================ -->
   <div class="bg-reference-overlay" [class.glitchy]="glitchActive()">
     <img [src]="backgroundImage().url || '/assets/background-overlay-reference.png'" alt="" aria-hidden="true" />
   </div>
 
-  <!-- ============================================================
-       LOGIN SCREEN
-       ============================================================ -->
   <section class="login-screen" *ngIf="!isLoggedIn() && !isLoading()">
     <div class="bg-vignette"></div>
     <div class="bg-scanlines"></div>
@@ -23,22 +14,12 @@
       <form (ngSubmit)="login()" class="login-form">
         <label class="field">
           <span>Username</span>
-          <input
-            type="text"
-            name="username"
-            [(ngModel)]="username"
-            placeholder="operator id"
-            autocomplete="username" />
+          <input type="text" name="username" [(ngModel)]="username" placeholder="operator id" autocomplete="username" />
         </label>
 
         <label class="field">
           <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            [(ngModel)]="password"
-            placeholder="••••••••"
-            autocomplete="current-password" />
+          <input type="password" name="password" [(ngModel)]="password" placeholder="••••••••" autocomplete="current-password" />
         </label>
 
         <button type="submit" class="btn primary full">LOGIN</button>
@@ -48,9 +29,6 @@
     </div>
   </section>
 
-  <!-- ============================================================
-       LOADING SCREEN
-       ============================================================ -->
   <section class="loading-screen" *ngIf="isLoading()">
     <div class="bg-vignette"></div>
     <div class="bg-scanlines"></div>
@@ -70,56 +48,43 @@
     </div>
   </section>
 
-  <!-- ============================================================
-       LOGO — centered on login, then docks to the top-left HUD
-       corner once the session finishes stabilizing.
-       ============================================================ -->
   <div class="logo-anchor" *ngIf="isLoggedIn()" [class.docked]="logoDocked()">
     <img class="logo-mark-img" src="assets/swechha-icon.png" alt="SWECHHA" />
   </div>
 
-  <!-- ============================================================
-       MAIN SITE
-       ============================================================ -->
   <ng-container *ngIf="isLoggedIn()">
-
     <canvas class="noise-canvas" #noiseCanvas></canvas>
     <div class="bg-scanlines fixed"></div>
     <div class="bg-vignette fixed"></div>
     <div class="glitch-cut" [class.fire]="glitchActive()"></div>
 
-    <!-- admin-only ambient logo watermark -->
     <div class="admin-bg-logo" *ngIf="isAdmin" aria-hidden="true">
       <img src="assets/swechha-icon.png" alt="" />
     </div>
 
-    <!-- scroll progress -->
     <div class="scroll-progress-track">
       <div class="scroll-progress-fill" [style.width.%]="scrollProgress()"></div>
     </div>
 
-    <!-- top hud -->
     <header class="top-hud" [class.docked]="logoDocked()">
       <span class="hud-title">
         SWECHHA // <b [class.is-admin]="isAdmin">{{ isAdmin ? 'ADMIN ACCESS' : 'VIEWER ACCESS' }}</b>
       </span>
+
       <div class="hud-actions">
-        <label class="btn ghost small" *ngIf="isAdmin" title="Replace the ambient background image">
-          🖼 BG
-          <input type="file" accept="image/*" hidden (change)="onBackgroundImageChange($event)" />
-        </label>
-        <span class="upload-chip" *ngIf="uploadProgress()['background'] !== undefined">
-          {{ uploadProgress()['background'] }}%
-        </span>
+        <div class="background-url-field" *ngIf="isAdmin">
+          <input
+            type="url"
+            class="edit-input"
+            [ngModel]="backgroundImage().url"
+            (ngModelChange)="updateBackgroundImageUrl($event)"
+            placeholder="Background Image URL" />
+        </div>
         <button class="btn ghost small" (click)="logout()">LOGOUT</button>
       </div>
     </header>
 
     <main class="story">
-
-      <!-- ==================================================
-           SECTION 1 — LOGLINE
-           ================================================== -->
       <section class="content-slide" id="logline">
         <div class="section-tag">01 // LOGLINE</div>
         <div class="terminal-card wide">
@@ -127,13 +92,7 @@
             <p class="body-text">{{ logline() }}</p>
           </ng-container>
           <ng-template #loglineEdit>
-            <textarea
-              class="edit-textarea"
-              [ngModel]="logline()"
-              (ngModelChange)="logline.set($event)"
-              rows="5"
-              name="logline"
-              placeholder="Enter the logline…"></textarea>
+            <textarea class="edit-textarea" [ngModel]="logline()" (ngModelChange)="logline.set($event)" rows="5" name="logline" placeholder="Enter the logline…"></textarea>
           </ng-template>
 
           <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('logline')">
@@ -142,9 +101,6 @@
         </div>
       </section>
 
-      <!-- ==================================================
-           SECTION 2 — SYNOPSIS
-           ================================================== -->
       <section class="content-slide" id="synopsis">
         <div class="section-tag">02 // SYNOPSIS</div>
         <div class="terminal-card wide">
@@ -152,13 +108,7 @@
             <p class="body-text">{{ synopsis() }}</p>
           </ng-container>
           <ng-template #synopsisEdit>
-            <textarea
-              class="edit-textarea"
-              [ngModel]="synopsis()"
-              (ngModelChange)="synopsis.set($event)"
-              rows="7"
-              name="synopsis"
-              placeholder="Enter the synopsis…"></textarea>
+            <textarea class="edit-textarea" [ngModel]="synopsis()" (ngModelChange)="synopsis.set($event)" rows="7" name="synopsis" placeholder="Enter the synopsis…"></textarea>
           </ng-template>
 
           <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('synopsis')">
@@ -167,9 +117,6 @@
         </div>
       </section>
 
-      <!-- ==================================================
-           SECTION 3 — EPISODIC SYNOPSIS
-           ================================================== -->
       <section class="content-slide" id="episodic">
         <div class="section-tag">03 // EPISODIC SYNOPSIS</div>
 
@@ -177,19 +124,7 @@
           <article class="glass-card" *ngFor="let ep of episodes(); trackBy: trackById">
             <div class="card-image-wrap portrait small-image" *ngIf="ep.image">
               <img [src]="ep.image" [alt]="ep.title" />
-              <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
-                📷
-                <input type="file" accept="image/*" hidden (change)="onImageChange($event, ep, 'image', episodeFolder(ep.id), 'ep-' + ep.id)" />
-              </label>
-              <span class="upload-chip on-image" *ngIf="uploadProgress()['ep-' + ep.id] !== undefined">
-                {{ uploadProgress()['ep-' + ep.id] }}%
-              </span>
             </div>
-            <label class="image-edit-btn add-image-btn" *ngIf="isAdmin && !ep.image" title="Add image">
-              <ng-container *ngIf="uploadProgress()['ep-' + ep.id] === undefined; else epUploading">📷 Add photo</ng-container>
-              <ng-template #epUploading>{{ uploadProgress()['ep-' + ep.id] }}%</ng-template>
-              <input type="file" accept="image/*" hidden (change)="onImageChange($event, ep, 'image', episodeFolder(ep.id), 'ep-' + ep.id)" />
-            </label>
 
             <ng-container *ngIf="!editing['episodic']; else epEdit">
               <h3>{{ ep.title }}</h3>
@@ -199,6 +134,7 @@
             <ng-template #epEdit>
               <input class="edit-input" [(ngModel)]="ep.title" placeholder="Episode title" name="epTitle{{ ep.id }}" />
               <textarea class="edit-textarea" [(ngModel)]="ep.text" rows="4" placeholder="Episode description" name="epText{{ ep.id }}"></textarea>
+              <input class="edit-input" [(ngModel)]="ep.image" placeholder="Image URL (https://...)" name="epImage{{ ep.id }}" />
               <button class="btn danger small" (click)="removeEpisode(ep.id)">Remove episode</button>
             </ng-template>
           </article>
@@ -212,9 +148,6 @@
         </div>
       </section>
 
-      <!-- ==================================================
-           SECTION 4 — CHARACTER DETAILS
-           ================================================== -->
       <section class="content-slide" id="characters">
         <div class="section-tag">04 // CHARACTER DETAILS</div>
 
@@ -222,19 +155,7 @@
           <article class="glass-card" *ngFor="let char of characters(); trackBy: trackById">
             <div class="card-image-wrap portrait round" *ngIf="char.photo">
               <img [src]="char.photo" [alt]="char.name" />
-              <label class="image-edit-btn" *ngIf="isAdmin" title="Change photo">
-                📷
-                <input type="file" accept="image/*" hidden (change)="onImageChange($event, char, 'photo', characterFolder(char.id), 'char-' + char.id)" />
-              </label>
-              <span class="upload-chip on-image" *ngIf="uploadProgress()['char-' + char.id] !== undefined">
-                {{ uploadProgress()['char-' + char.id] }}%
-              </span>
             </div>
-            <label class="image-edit-btn add-image-btn round" *ngIf="isAdmin && !char.photo" title="Add photo">
-              <ng-container *ngIf="uploadProgress()['char-' + char.id] === undefined; else charUploading">📷 Add photo</ng-container>
-              <ng-template #charUploading>{{ uploadProgress()['char-' + char.id] }}%</ng-template>
-              <input type="file" accept="image/*" hidden (change)="onImageChange($event, char, 'photo', characterFolder(char.id), 'char-' + char.id)" />
-            </label>
 
             <ng-container *ngIf="!editing['characters']; else charEdit">
               <h3>{{ char.name }}</h3>
@@ -246,6 +167,7 @@
               <input class="edit-input" [(ngModel)]="char.name" placeholder="Character name" name="charName{{ char.id }}" />
               <input class="edit-input" [(ngModel)]="char.role" placeholder="Role (e.g. Protagonist)" name="charRole{{ char.id }}" />
               <textarea class="edit-textarea" [(ngModel)]="char.description" rows="4" placeholder="Character description" name="charDesc{{ char.id }}"></textarea>
+              <input class="edit-input" [(ngModel)]="char.photo" placeholder="Photo URL (https://...)" name="charPhoto{{ char.id }}" />
               <button class="btn danger small" (click)="removeCharacter(char.id)">Remove character</button>
             </ng-template>
           </article>
@@ -259,29 +181,16 @@
         </div>
       </section>
 
-      <!-- ==================================================
-           SECTION 5 — MOOD BOARD
-           ================================================== -->
       <section class="content-slide" id="moodboard">
         <div class="section-tag">05 // MOOD BOARD</div>
 
         <div class="mood-grid">
           <figure class="mood-tile portrait-tile" *ngFor="let m of moodBoard(); trackBy: trackById">
-            <ng-container *ngIf="m.src; else moodUploading">
-              <img [src]="m.src" [alt]="m.caption || 'Mood board image'" />
-            </ng-container>
-            <ng-template #moodUploading>
-              <div class="tile-uploading">
-                <span>{{ uploadProgress()['mood-' + m.id] ?? 0 }}%</span>
-              </div>
-            </ng-template>
+            <img *ngIf="m.src" [src]="m.src" [alt]="m.caption || 'Mood board image'" />
 
             <ng-container *ngIf="editing['moodboard']; else moodCaption">
-              <input
-                class="edit-input tile-caption-input"
-                [(ngModel)]="m.caption"
-                placeholder="Caption (optional)"
-                name="moodCaption{{ m.id }}" />
+              <input class="edit-input tile-caption-input" [(ngModel)]="m.src" placeholder="Image URL (https://...)" name="moodSrc{{ m.id }}" />
+              <input class="edit-input tile-caption-input tile-caption-lower" [(ngModel)]="m.caption" placeholder="Caption (optional)" name="moodCaption{{ m.id }}" />
             </ng-container>
             <ng-template #moodCaption>
               <figcaption *ngIf="m.caption">{{ m.caption }}</figcaption>
@@ -295,16 +204,10 @@
           <button class="btn small" (click)="toggleEdit('moodboard')">
             {{ editing['moodboard'] ? '💾 Done editing' : '✎ Edit mood board' }}
           </button>
-          <label class="btn small ghost add-btn" *ngIf="editing['moodboard']">
-            + Add image
-            <input type="file" accept="image/*" hidden (change)="addMoodImage($event)" />
-          </label>
+          <button class="btn small ghost add-btn" *ngIf="editing['moodboard']" (click)="addMoodImage()">+ Add image</button>
         </div>
       </section>
 
-      <!-- ==================================================
-           SECTION 6 — TECHNICALITIES
-           ================================================== -->
       <section class="content-slide" id="technicalities">
         <div class="section-tag">06 // TECHNICALITIES</div>
 
@@ -312,31 +215,14 @@
           <article class="tech-row" *ngFor="let item of technicalities(); trackBy: trackById">
             <div class="card-image-wrap portrait tall" *ngIf="item.image">
               <img [src]="item.image" [alt]="item.heading" />
-              <label class="image-edit-btn" *ngIf="isAdmin" title="Change image">
-                📷
-                <input type="file" accept="image/*" hidden (change)="onImageChange($event, item, 'image', techFolder(item.id), 'tech-' + item.id)" />
-              </label>
-              <span class="upload-chip on-image" *ngIf="uploadProgress()['tech-' + item.id] !== undefined">
-                {{ uploadProgress()['tech-' + item.id] }}%
-              </span>
             </div>
-            <label class="image-edit-btn add-image-btn" *ngIf="isAdmin && !item.image" title="Add image (optional)">
-              <ng-container *ngIf="uploadProgress()['tech-' + item.id] === undefined; else techUploading">📷 Add image</ng-container>
-              <ng-template #techUploading>{{ uploadProgress()['tech-' + item.id] }}%</ng-template>
-              <input type="file" accept="image/*" hidden (change)="onImageChange($event, item, 'image', techFolder(item.id), 'tech-' + item.id)" />
-            </label>
 
             <div class="tech-copy">
               <ng-container *ngIf="!editing['technicalities']; else techEdit">
                 <h3>{{ item.heading }}</h3>
                 <p>{{ item.text }}</p>
                 <div class="link-row">
-                  <a
-                    class="tech-link"
-                    *ngFor="let l of item.links"
-                    [href]="l.url"
-                    target="_blank"
-                    rel="noopener noreferrer">
+                  <a class="tech-link" *ngFor="let l of item.links" [href]="l.url" target="_blank" rel="noopener noreferrer">
                     {{ l.label || l.url }} ↗
                   </a>
                 </div>
@@ -345,16 +231,11 @@
               <ng-template #techEdit>
                 <input class="edit-input" [(ngModel)]="item.heading" placeholder="Section heading" name="techHeading{{ item.id }}" />
                 <textarea class="edit-textarea" [(ngModel)]="item.text" rows="4" placeholder="Details" name="techText{{ item.id }}"></textarea>
+                <input class="edit-input" [(ngModel)]="item.image" placeholder="Image URL (optional)" name="techImage{{ item.id }}" />
 
                 <div class="link-edit-row" *ngFor="let l of item.links">
                   <input class="edit-input" [(ngModel)]="l.label" placeholder="Link title" name="linkLabel{{ l.id }}" />
-                  <input
-                    class="edit-input"
-                    type="url"
-                    [(ngModel)]="l.url"
-                    placeholder="https://example.com"
-                    [class.input-invalid]="l.url && !isValidUrl(l.url)"
-                    name="linkUrl{{ l.id }}" />
+                  <input class="edit-input" type="url" [(ngModel)]="l.url" placeholder="https://example.com" [class.input-invalid]="l.url && !isValidUrl(l.url)" name="linkUrl{{ l.id }}" />
                   <button class="btn danger small" (click)="removeTechLink(item, l.id)">✕</button>
                 </div>
 
@@ -375,9 +256,6 @@
         </div>
       </section>
 
-      <!-- ==================================================
-           SECTION 7 — DIRECTOR'S NOTES
-           ================================================== -->
       <section class="content-slide" id="directors-notes">
         <div class="section-tag">07 // DIRECTOR'S NOTES</div>
 
@@ -386,24 +264,13 @@
             <p class="body-text">{{ directorsNotesText() }}</p>
           </ng-container>
           <ng-template #notesEdit>
-            <textarea
-              class="edit-textarea"
-              [ngModel]="directorsNotesText()"
-              (ngModelChange)="directorsNotesText.set($event)"
-              rows="6"
-              name="directorsText"
-              placeholder="Enter director's notes…"></textarea>
+            <textarea class="edit-textarea" [ngModel]="directorsNotesText()" (ngModelChange)="directorsNotesText.set($event)" rows="6" name="directorsText" placeholder="Enter director's notes…"></textarea>
           </ng-template>
         </div>
 
         <div class="mood-grid" *ngIf="directorsNotesImages().length || isAdmin">
           <figure class="mood-tile" *ngFor="let img of directorsNotesImages(); trackBy: trackById">
-            <ng-container *ngIf="img.src; else dirImgUploading">
-              <img [src]="img.src" [alt]="img.caption || 'Director notes image'" />
-            </ng-container>
-            <ng-template #dirImgUploading>
-              <div class="tile-uploading"><span>{{ uploadProgress()['dirimg-' + img.id] ?? 0 }}%</span></div>
-            </ng-template>
+            <img *ngIf="img.src" [src]="img.src" [alt]="img.caption || 'Director notes image'" />
             <figcaption *ngIf="img.caption">{{ img.caption }}</figcaption>
             <button class="tile-remove" *ngIf="isAdmin && editing['directors']" (click)="removeDirectorsImage(img.id)">✕</button>
           </figure>
@@ -413,9 +280,6 @@
         <div class="article-grid">
           <article class="article-card" *ngFor="let a of articles(); trackBy: trackById">
             <img [src]="a.image" [alt]="a.title" *ngIf="a.image" />
-            <span class="upload-chip on-image" *ngIf="uploadProgress()['article-' + a.id] !== undefined">
-              {{ uploadProgress()['article-' + a.id] }}%
-            </span>
 
             <ng-container *ngIf="!editing['directors']; else articleEdit">
               <h5>{{ a.title }}</h5>
@@ -426,17 +290,8 @@
             <ng-template #articleEdit>
               <input class="edit-input" [(ngModel)]="a.title" placeholder="Article title" name="artTitle{{ a.id }}" />
               <textarea class="edit-textarea" [(ngModel)]="a.description" rows="3" placeholder="Article description" name="artDesc{{ a.id }}"></textarea>
-              <input
-                class="edit-input"
-                type="url"
-                [(ngModel)]="a.link"
-                placeholder="https://example.com"
-                [class.input-invalid]="a.link && !isValidUrl(a.link)"
-                name="artLink{{ a.id }}" />
-              <label class="btn small ghost">
-                {{ a.image ? 'Change image' : 'Add image' }}
-                <input type="file" accept="image/*" hidden (change)="onImageChange($event, a, 'image', articleFolder(a.id), 'article-' + a.id)" />
-              </label>
+              <input class="edit-input" type="url" [(ngModel)]="a.link" placeholder="https://example.com" [class.input-invalid]="a.link && !isValidUrl(a.link)" name="artLink{{ a.id }}" />
+              <input class="edit-input" [(ngModel)]="a.image" placeholder="Image URL (https://...)" name="artImage{{ a.id }}" />
               <button class="btn danger small" (click)="removeArticle(a.id)">Remove article</button>
             </ng-template>
           </article>
@@ -444,69 +299,40 @@
 
         <div class="section-admin-bar" *ngIf="isAdmin">
           <button class="btn small" (click)="toggleEdit('directors')">
-            {{ editing['directors'] ? '💾 Done editing' : '✎ Edit director\u2019s notes' }}
+            {{ editing['directors'] ? '💾 Done editing' : '✎ Edit director’s notes' }}
           </button>
           <ng-container *ngIf="editing['directors']">
-            <label class="btn small ghost add-btn">
-              + Add image
-              <input type="file" accept="image/*" hidden (change)="addDirectorsImage($event)" />
-            </label>
+            <button class="btn small ghost add-btn" (click)="addDirectorsImage()">+ Add image</button>
             <button class="btn small ghost add-btn" (click)="addArticle()">+ Add article</button>
           </ng-container>
         </div>
       </section>
 
-      <!-- ==================================================
-           SECTION 8 — ABOUT ME
-           ================================================== -->
       <section class="content-slide" id="about">
         <div class="section-tag">08 // ABOUT ME</div>
 
         <div class="about-layout">
-          <div class="card-image-wrap portrait round">
+          <div class="card-image-wrap portrait round" *ngIf="aboutMe().photo">
             <img [src]="aboutMe().photo" alt="Director photo" />
-            <label class="image-edit-btn" *ngIf="isAdmin" title="Change photo">
-              📷
-              <input type="file" accept="image/*" hidden (change)="onImageChange($event, aboutMe(), 'photo', 'swechha/about-me/director-photo', 'about')" />
-            </label>
-            <span class="upload-chip on-image" *ngIf="uploadProgress()['about'] !== undefined">
-              {{ uploadProgress()['about'] }}%
-            </span>
           </div>
 
           <div class="about-copy">
             <ng-container *ngIf="!editing['about']; else aboutEdit">
               <p class="body-text">{{ aboutMe().bio }}</p>
               <div class="link-row">
-                <a
-                  class="tech-link"
-                  *ngFor="let l of aboutMe().links"
-                  [href]="l.url"
-                  target="_blank"
-                  rel="noopener noreferrer">
+                <a class="tech-link" *ngFor="let l of aboutMe().links" [href]="l.url" target="_blank" rel="noopener noreferrer">
                   {{ l.label || l.url }} ↗
                 </a>
               </div>
             </ng-container>
 
             <ng-template #aboutEdit>
-              <textarea
-                class="edit-textarea"
-                [ngModel]="aboutMe().bio"
-                (ngModelChange)="aboutMe().bio = $event"
-                rows="6"
-                placeholder="Director bio"
-                name="aboutBio"></textarea>
+              <textarea class="edit-textarea" [ngModel]="aboutMe().bio" (ngModelChange)="aboutMe().bio = $event" rows="6" placeholder="Director bio" name="aboutBio"></textarea>
+              <input class="edit-input" [(ngModel)]="aboutMe().photo" placeholder="Photo URL (https://...)" name="aboutPhoto" />
 
               <div class="link-edit-row" *ngFor="let l of aboutMe().links">
                 <input class="edit-input" [(ngModel)]="l.label" placeholder="Link title" name="aboutLinkLabel{{ l.id }}" />
-                <input
-                  class="edit-input"
-                  type="url"
-                  [(ngModel)]="l.url"
-                  placeholder="https://example.com"
-                  [class.input-invalid]="l.url && !isValidUrl(l.url)"
-                  name="aboutLinkUrl{{ l.id }}" />
+                <input class="edit-input" type="url" [(ngModel)]="l.url" placeholder="https://example.com" [class.input-invalid]="l.url && !isValidUrl(l.url)" name="aboutLinkUrl{{ l.id }}" />
                 <button class="btn danger small" (click)="removeAboutLink(l.id)">✕</button>
               </div>
               <button class="btn small ghost add-btn" (click)="addAboutLink()">+ Add link</button>
@@ -518,7 +344,6 @@
           </div>
         </div>
       </section>
-
     </main>
 
     <footer class="site-footer">
