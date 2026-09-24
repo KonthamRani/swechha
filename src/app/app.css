@@ -157,6 +157,7 @@ button, input, textarea, select {
   width: min(60vw, 220px);
   height: auto;
   filter: drop-shadow(0 0 22px rgba(255, 22, 61, 0.45));
+  border-radius: 3%;
 }
 .brand-logo.small {
   width: min(48vw, 170px);
@@ -561,8 +562,8 @@ button, input, textarea, select {
 }
 
 .glitch-word::after {
-  color: var(--cyan);
-  text-shadow: 4px 0 0 rgba(0, 247, 255, 0.45);
+  /* color: rgba(128, 0, 255, 1);
+  text-shadow: 4px 0 0 rgba(128, 0, 255, 1); */
   clip-path: inset(58% 0 10% 0);
   transform: translate(3px, 0);
   animation: glitchBottom 2.2s steps(2, end) infinite;
@@ -843,6 +844,10 @@ button, input, textarea, select {
   grid-template-columns: 1fr;
   gap: 18px;
 }
+.card-grid:has(> :only-child) > :only-child {
+  width: min(100%, 560px);
+  justify-self: center;
+}
 @media (min-width: 640px) {
   .card-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -926,11 +931,9 @@ button, input, textarea, select {
    ========================================================= */
 .mood-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 18px;
 }
-@media (min-width: 640px) { .mood-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 1024px) { .mood-grid { grid-template-columns: repeat(4, 1fr); } }
 
 .mood-tile {
   position: relative;
@@ -942,12 +945,12 @@ button, input, textarea, select {
 }
 .mood-tile img {
   width: 100%;
-  aspect-ratio: 3 / 2;
+  height: 40vh;
   object-fit: cover;
   display: block;
   transition: transform 0.4s ease;
 }
-.mood-tile.portrait-tile img { aspect-ratio: 9 / 16; }
+.mood-tile.portrait-tile img { height: 40vh; }
 .mood-tile:hover img { transform: scale(1.06); }
 .mood-tile figcaption {
   position: absolute;
@@ -1047,6 +1050,10 @@ button, input, textarea, select {
   grid-template-columns: 1fr;
   gap: 16px;
 }
+.article-grid:has(> :only-child) > :only-child {
+  width: min(100%, 520px);
+  justify-self: center;
+}
 @media (min-width: 640px) { .article-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .article-grid { grid-template-columns: repeat(3, 1fr); } }
 .article-card {
@@ -1064,6 +1071,7 @@ button, input, textarea, select {
   display: block;
   margin-bottom: 10px;
 }
+.article-image-carousel { position: relative; }
 .article-card h5 {
   margin: 0 10px 6px;
   font-size: 0.92rem;
@@ -1132,6 +1140,28 @@ button, input, textarea, select {
   color: rgba(255, 246, 235, 0.4);
 }
 
+/* Keep copy readable over the animated reference image and scanlines. */
+.section-tag,
+.sub-heading,
+.glass-card h3,
+.glass-card p,
+.tech-copy h3,
+.tech-copy p,
+.article-card h5,
+.article-card p,
+.about-copy .body-text {
+  background: rgba(0, 0, 0, 0.62);
+  border: 1px solid rgba(255, 247, 237, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.24);
+  padding: 9px 12px;
+}
+.section-tag,
+.sub-heading { width: fit-content; }
+.glass-card h3,
+.tech-copy h3,
+.article-card h5 { width: fit-content; }
+
 /* =========================================================
    RESPONSIVE TWEAKS
    ========================================================= */
@@ -1140,10 +1170,6 @@ button, input, textarea, select {
   .hud-title { font-size: 0.64rem; padding: 7px 10px; }
   .content-slide { gap: 16px; }
   .card-image-wrap.round { width: 40vw; }
-  .mood-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 420px) {
-  .mood-grid { grid-template-columns: 1fr; }
 }
 
 @media (hover: none) and (pointer: coarse) {
@@ -1247,6 +1273,10 @@ img.zoomable { cursor: zoom-in; }
   transform: scale(1.25);
   box-shadow: 0 0 8px var(--red);
 }
+
+.tile-image-edit { position: relative; z-index: 3; padding: 8px; }
+.tile-image-edit .edit-input { margin-bottom: 0; }
+.tile-image-add { position: relative; z-index: 3; margin: 0 8px 8px; }
 
 .interval-field { display: grid; gap: 4px; margin-bottom: 8px; }
 .interval-field span {

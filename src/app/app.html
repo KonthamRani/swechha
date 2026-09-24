@@ -21,7 +21,7 @@
     <div class="bg-scanlines"></div>
 
     <div class="login-card">
-      <img class="brand-logo" src="/assets/swechha-icon.png" alt="SWECHHA" />
+      <img class="brand-logo" src="/assets/swechha-icon.jpg" alt="SWECHHA" />
       <p class="login-sub">SYSTEM ACCESS TERMINAL</p>
 
       <form (ngSubmit)="login()" class="login-form">
@@ -47,7 +47,7 @@
     <div class="bg-scanlines"></div>
 
     <div class="loading-inner">
-      <img class="brand-logo small" src="assets/swechha-icon.png" alt="SWECHHA" />
+      <img class="brand-logo small" src="/assets/swechha-icon.jpg" alt="SWECHHA" />
       <p class="loading-status">{{ loadingStatusText() }}</p>
 
       <div class="loading-bar-track">
@@ -68,7 +68,7 @@
     <div class="glitch-cut" [class.fire]="glitchActive()"></div>
 
     <div class="admin-bg-logo" *ngIf="isAdmin" aria-hidden="true">
-      <img src="assets/swechha-icon.png" alt="" />
+      <img src="/assets/swechha-icon.jpg" alt="" />
     </div>
 
     <div class="scroll-progress-track">
@@ -163,9 +163,18 @@
 
         <div class="card-grid episodes-grid">
           <article class="glass-card" *ngFor="let ep of episodes(); trackBy: trackById">
-            <div class="card-image-wrap portrait small-image" *ngIf="ep.image">
-              <img class="zoomable" [src]="ep.image" [alt]="ep.title" (click)="openImage([ep.image], 0, ep.title)" />
-            </div>
+            <ng-container *ngIf="contentImages(ep.image, ep.extraImages) as imgs">
+              <div class="card-image-wrap portrait small-image" *ngIf="imgs.length">
+                <img class="zoomable" [src]="imgs[currentContentImage('episode-' + ep.id, imgs.length)]" [alt]="ep.title"
+                     (click)="openImage(imgs, currentContentImage('episode-' + ep.id, imgs.length), ep.title)" />
+                <div class="carousel-dots" *ngIf="imgs.length > 1">
+                  <button type="button" class="dot" *ngFor="let img of imgs; let i = index; trackBy: trackByIndex"
+                          [class.active]="i === currentContentImage('episode-' + ep.id, imgs.length)"
+                          [attr.aria-label]="'Show image ' + (i + 1)"
+                          (click)="goToContentImage('episode-' + ep.id, i)"></button>
+                </div>
+              </div>
+            </ng-container>
 
             <ng-container *ngIf="!editing['episodic']; else epEdit">
               <h3>{{ ep.title }}</h3>
@@ -176,6 +185,12 @@
               <input class="edit-input" [(ngModel)]="ep.title" placeholder="Episode title" name="epTitle{{ ep.id }}" />
               <textarea class="edit-textarea" [(ngModel)]="ep.text" rows="4" placeholder="Episode description" name="epText{{ ep.id }}"></textarea>
               <input class="edit-input" [(ngModel)]="ep.image" placeholder="Image URL (https://...)" name="epImage{{ ep.id }}" />
+              <div class="link-edit-row" *ngFor="let url of ep.extraImages ?? []; let i = index; trackBy: trackByIndex">
+                <input class="edit-input" type="url" [ngModel]="url" (ngModelChange)="setContentImage(ep, i, $event)"
+                       [placeholder]="'Image ' + (i + 2) + ' URL (https://...)'" [name]="'epExtra' + ep.id + '_' + i" />
+                <button class="btn danger small" (click)="removeContentImage(ep, i)">✕</button>
+              </div>
+              <button class="btn small ghost add-btn" (click)="addContentImage(ep)">+ Add image URL</button>
               <button class="btn danger small" (click)="removeEpisode(ep.id)">Remove episode</button>
             </ng-template>
           </article>
@@ -257,11 +272,24 @@
 
         <div class="mood-grid">
           <figure class="mood-tile portrait-tile" *ngFor="let m of moodBoard(); trackBy: trackById">
-            <img *ngIf="m.src" class="zoomable" [src]="m.src" [alt]="m.caption || 'Mood board image'"
-                 (click)="openImage([m.src], 0, m.caption)" />
+            <ng-container *ngIf="contentImages(m.src, m.extraImages) as imgs">
+              <img *ngIf="imgs.length" class="zoomable" [src]="imgs[currentContentImage('mood-' + m.id, imgs.length)]"
+                   [alt]="m.caption || 'Mood board image'" (click)="openImage(imgs, currentContentImage('mood-' + m.id, imgs.length), m.caption)" />
+              <div class="carousel-dots" *ngIf="imgs.length > 1">
+                <button type="button" class="dot" *ngFor="let img of imgs; let i = index; trackBy: trackByIndex"
+                        [class.active]="i === currentContentImage('mood-' + m.id, imgs.length)"
+                        [attr.aria-label]="'Show image ' + (i + 1)" (click)="goToContentImage('mood-' + m.id, i)"></button>
+              </div>
+            </ng-container>
 
             <ng-container *ngIf="editing['moodboard']; else moodCaption">
               <input class="edit-input tile-caption-input" [(ngModel)]="m.src" placeholder="Image URL (https://...)" name="moodSrc{{ m.id }}" />
+              <div class="link-edit-row tile-image-edit" *ngFor="let url of m.extraImages ?? []; let i = index; trackBy: trackByIndex">
+                <input class="edit-input" type="url" [ngModel]="url" (ngModelChange)="setContentImage(m, i, $event)"
+                       [placeholder]="'Image ' + (i + 2) + ' URL (https://...)'" [name]="'moodExtra' + m.id + '_' + i" />
+                <button class="btn danger small" (click)="removeContentImage(m, i)">✕</button>
+              </div>
+              <button class="btn small ghost add-btn tile-image-add" (click)="addContentImage(m)">+ Add image URL</button>
               <input class="edit-input tile-caption-input tile-caption-lower" [(ngModel)]="m.caption" placeholder="Caption (optional)" name="moodCaption{{ m.id }}" />
             </ng-container>
             <ng-template #moodCaption>
@@ -285,9 +313,17 @@
 
         <div class="tech-stack">
           <article class="tech-row" *ngFor="let item of technicalities(); trackBy: trackById">
-            <div class="card-image-wrap portrait tall" *ngIf="item.image">
-              <img class="zoomable" [src]="item.image" [alt]="item.heading" (click)="openImage([item.image], 0, item.heading)" />
-            </div>
+            <ng-container *ngIf="contentImages(item.image, item.extraImages) as imgs">
+              <div class="card-image-wrap portrait tall" *ngIf="imgs.length">
+                <img class="zoomable" [src]="imgs[currentContentImage('tech-' + item.id, imgs.length)]" [alt]="item.heading"
+                     (click)="openImage(imgs, currentContentImage('tech-' + item.id, imgs.length), item.heading)" />
+                <div class="carousel-dots" *ngIf="imgs.length > 1">
+                  <button type="button" class="dot" *ngFor="let image of imgs; let i = index; trackBy: trackByIndex"
+                          [class.active]="i === currentContentImage('tech-' + item.id, imgs.length)"
+                          [attr.aria-label]="'Show image ' + (i + 1)" (click)="goToContentImage('tech-' + item.id, i)"></button>
+                </div>
+              </div>
+            </ng-container>
 
             <div class="tech-copy">
               <ng-container *ngIf="!editing['technicalities']; else techEdit">
@@ -303,7 +339,13 @@
               <ng-template #techEdit>
                 <input class="edit-input" [(ngModel)]="item.heading" placeholder="Section heading" name="techHeading{{ item.id }}" />
                 <textarea class="edit-textarea" [(ngModel)]="item.text" rows="4" placeholder="Details" name="techText{{ item.id }}"></textarea>
-                <input class="edit-input" [(ngModel)]="item.image" placeholder="Image URL (optional)" name="techImage{{ item.id }}" />
+                  <input class="edit-input" [(ngModel)]="item.image" placeholder="Image URL (optional)" name="techImage{{ item.id }}" />
+                  <div class="link-edit-row" *ngFor="let url of item.extraImages ?? []; let i = index; trackBy: trackByIndex">
+                    <input class="edit-input" type="url" [ngModel]="url" (ngModelChange)="setContentImage(item, i, $event)"
+                           [placeholder]="'Image ' + (i + 2) + ' URL (https://...)'" [name]="'techExtra' + item.id + '_' + i" />
+                    <button class="btn danger small" (click)="removeContentImage(item, i)">✕</button>
+                  </div>
+                  <button class="btn small ghost add-btn" (click)="addContentImage(item)">+ Add image URL</button>
 
                 <div class="link-edit-row" *ngFor="let l of item.links">
                   <input class="edit-input" [(ngModel)]="l.label" placeholder="Link title" name="linkLabel{{ l.id }}" />
@@ -334,17 +376,36 @@
         <div class="terminal-card wide">
           <ng-container *ngIf="!editing['directors']; else notesEdit">
             <p class="body-text">{{ directorsNotesText() }}</p>
+            <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('directors')">✎ EDIT</button>
           </ng-container>
           <ng-template #notesEdit>
             <textarea class="edit-textarea" [ngModel]="directorsNotesText()" (ngModelChange)="directorsNotesText.set($event)" rows="6" name="directorsText" placeholder="Enter director's notes…"></textarea>
+            <button class="edit-fab" *ngIf="isAdmin" (click)="toggleEdit('directors')">💾 SAVE</button>
           </ng-template>
         </div>
 
         <div class="mood-grid" *ngIf="directorsNotesImages().length || isAdmin">
           <figure class="mood-tile" *ngFor="let img of directorsNotesImages(); trackBy: trackById">
-            <img *ngIf="img.src" class="zoomable" [src]="img.src" [alt]="img.caption || 'Director notes image'"
-                 (click)="openImage([img.src], 0, img.caption)" />
+            <ng-container *ngIf="contentImages(img.src, img.extraImages) as imgs">
+              <img *ngIf="imgs.length" class="zoomable" [src]="imgs[currentContentImage('director-' + img.id, imgs.length)]"
+                   [alt]="img.caption || 'Director notes image'" (click)="openImage(imgs, currentContentImage('director-' + img.id, imgs.length), img.caption)" />
+              <div class="carousel-dots" *ngIf="imgs.length > 1">
+                <button type="button" class="dot" *ngFor="let image of imgs; let i = index; trackBy: trackByIndex"
+                        [class.active]="i === currentContentImage('director-' + img.id, imgs.length)"
+                        [attr.aria-label]="'Show image ' + (i + 1)" (click)="goToContentImage('director-' + img.id, i)"></button>
+              </div>
+            </ng-container>
             <figcaption *ngIf="img.caption">{{ img.caption }}</figcaption>
+            <div class="tile-image-edit" *ngIf="editing['directors']">
+              <input class="edit-input" [(ngModel)]="img.src" placeholder="Image URL (https://...)" name="directorImage{{ img.id }}" />
+              <input class="edit-input" [(ngModel)]="img.caption" placeholder="Caption (optional)" name="directorCaption{{ img.id }}" />
+              <div class="link-edit-row" *ngFor="let url of img.extraImages ?? []; let i = index; trackBy: trackByIndex">
+                <input class="edit-input" type="url" [ngModel]="url" (ngModelChange)="setContentImage(img, i, $event)"
+                       [placeholder]="'Image ' + (i + 2) + ' URL (https://...)'" [name]="'directorExtra' + img.id + '_' + i" />
+                <button class="btn danger small" (click)="removeContentImage(img, i)">✕</button>
+              </div>
+              <button class="btn small ghost add-btn" (click)="addContentImage(img)">+ Add image URL</button>
+            </div>
             <button class="tile-remove" *ngIf="isAdmin && editing['directors']" (click)="removeDirectorsImage(img.id)">✕</button>
           </figure>
         </div>
@@ -352,7 +413,17 @@
         <h4 class="sub-heading" *ngIf="articles().length || isAdmin">Press &amp; Articles</h4>
         <div class="article-grid">
           <article class="article-card" *ngFor="let a of articles(); trackBy: trackById">
-            <img class="zoomable" [src]="a.image" [alt]="a.title" *ngIf="a.image" (click)="openImage([a.image], 0, a.title)" />
+            <ng-container *ngIf="contentImages(a.image, a.extraImages) as imgs">
+              <div class="article-image-carousel" *ngIf="imgs.length">
+                <img class="zoomable" [src]="imgs[currentContentImage('article-' + a.id, imgs.length)]" [alt]="a.title"
+                     (click)="openImage(imgs, currentContentImage('article-' + a.id, imgs.length), a.title)" />
+                <div class="carousel-dots" *ngIf="imgs.length > 1">
+                  <button type="button" class="dot" *ngFor="let img of imgs; let i = index; trackBy: trackByIndex"
+                          [class.active]="i === currentContentImage('article-' + a.id, imgs.length)"
+                          [attr.aria-label]="'Show image ' + (i + 1)" (click)="goToContentImage('article-' + a.id, i)"></button>
+                </div>
+              </div>
+            </ng-container>
 
             <ng-container *ngIf="!editing['directors']; else articleEdit">
               <h5>{{ a.title }}</h5>
@@ -365,6 +436,12 @@
               <textarea class="edit-textarea" [(ngModel)]="a.description" rows="3" placeholder="Article description" name="artDesc{{ a.id }}"></textarea>
               <input class="edit-input" type="url" [(ngModel)]="a.link" placeholder="https://example.com" [class.input-invalid]="a.link && !isValidUrl(a.link)" name="artLink{{ a.id }}" />
               <input class="edit-input" [(ngModel)]="a.image" placeholder="Image URL (https://...)" name="artImage{{ a.id }}" />
+              <div class="link-edit-row" *ngFor="let url of a.extraImages ?? []; let i = index; trackBy: trackByIndex">
+                <input class="edit-input" type="url" [ngModel]="url" (ngModelChange)="setContentImage(a, i, $event)"
+                       [placeholder]="'Image ' + (i + 2) + ' URL (https://...)'" [name]="'artExtra' + a.id + '_' + i" />
+                <button class="btn danger small" (click)="removeContentImage(a, i)">✕</button>
+              </div>
+              <button class="btn small ghost add-btn" (click)="addContentImage(a)">+ Add image URL</button>
               <button class="btn danger small" (click)="removeArticle(a.id)">Remove article</button>
             </ng-template>
           </article>
@@ -385,9 +462,17 @@
         <div class="section-tag">08 // ABOUT ME</div>
 
         <div class="about-layout">
-          <div class="card-image-wrap portrait round" *ngIf="aboutMe().photo">
-            <img class="zoomable" [src]="aboutMe().photo" alt="Director photo" (click)="openImage([aboutMe().photo], 0, 'Director')" />
-          </div>
+          <ng-container *ngIf="contentImages(aboutMe().photo, aboutMe().extraImages) as imgs">
+            <div class="card-image-wrap portrait round" *ngIf="imgs.length">
+              <img class="zoomable" [src]="imgs[currentContentImage('about', imgs.length)]" alt="Director photo"
+                   (click)="openImage(imgs, currentContentImage('about', imgs.length), 'Director')" />
+              <div class="carousel-dots" *ngIf="imgs.length > 1">
+                <button type="button" class="dot" *ngFor="let image of imgs; let i = index; trackBy: trackByIndex"
+                        [class.active]="i === currentContentImage('about', imgs.length)"
+                        [attr.aria-label]="'Show image ' + (i + 1)" (click)="goToContentImage('about', i)"></button>
+              </div>
+            </div>
+          </ng-container>
 
           <div class="about-copy">
             <ng-container *ngIf="!editing['about']; else aboutEdit">
@@ -402,6 +487,12 @@
             <ng-template #aboutEdit>
               <textarea class="edit-textarea" [ngModel]="aboutMe().bio" (ngModelChange)="aboutMe().bio = $event" rows="6" placeholder="Director bio" name="aboutBio"></textarea>
               <input class="edit-input" [(ngModel)]="aboutMe().photo" placeholder="Photo URL (https://...)" name="aboutPhoto" />
+              <div class="link-edit-row" *ngFor="let url of aboutMe().extraImages ?? []; let i = index; trackBy: trackByIndex">
+                <input class="edit-input" type="url" [ngModel]="url" (ngModelChange)="setContentImage(aboutMe(), i, $event)"
+                       [placeholder]="'Image ' + (i + 2) + ' URL (https://...)'" [name]="'aboutExtra' + i" />
+                <button class="btn danger small" (click)="removeContentImage(aboutMe(), i)">✕</button>
+              </div>
+              <button class="btn small ghost add-btn" (click)="addContentImage(aboutMe())">+ Add image URL</button>
 
               <div class="link-edit-row" *ngFor="let l of aboutMe().links">
                 <input class="edit-input" [(ngModel)]="l.label" placeholder="Link title" name="aboutLinkLabel{{ l.id }}" />

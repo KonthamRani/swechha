@@ -26,6 +26,7 @@ export interface Episode {
   title: string;
   text: string;
   image: string;
+  extraImages?: string[];
 }
 
 export interface CharacterEntry {
@@ -42,6 +43,7 @@ export interface MoodImage {
   id: number;
   src: string;
   caption: string;
+  extraImages?: string[];
 }
 
 export interface TechLink {
@@ -53,6 +55,7 @@ export interface TechLink {
 export interface TechItem {
   id: number;
   image: string;
+  extraImages?: string[];
   heading: string;
   text: string;
   links: TechLink[];
@@ -64,6 +67,7 @@ export interface Article {
   description: string;
   link: string;
   image: string;
+  extraImages?: string[];
 }
 
 export interface AboutLink {
@@ -106,6 +110,7 @@ export class App implements AfterViewChecked, OnDestroy {
   /* ---------- LIGHTBOX + CHARACTER CAROUSEL ---------- */
   lightbox = signal<{ images: string[]; index: number; alt: string } | null>(null);
   charSlides = signal<Record<number, number>>({});
+  imageSlides = signal<Record<string, number>>({});
   hoveredCharId: number | null = null;
 
   private carouselTimer: any = null;
@@ -234,8 +239,9 @@ export class App implements AfterViewChecked, OnDestroy {
     }
   ]);
 
-  aboutMe = signal<{ photo: string; photoPath?: string; bio: string; links: AboutLink[] }>({
+  aboutMe = signal<{ photo: string; photoPath?: string; extraImages?: string[]; bio: string; links: AboutLink[] }>({
     photo: 'https://placehold.co/400x500/0a0000/ff163d?text=DIRECTOR',
+    extraImages: [],
     bio: 'I\u2019m a writer-director working at the intersection of thriller and speculative fiction. SWECHHA is my ' +
       'first serialized project, built from years of watching how cities and platforms quietly reshape each other.',
     links: [
@@ -319,6 +325,7 @@ export class App implements AfterViewChecked, OnDestroy {
         partial = { synopsis: this.synopsis() };
         break;
       case 'episodic':
+        this.episodes.update(list => list.map(ep => ({ ...ep, extraImages: this.cleanImages(ep.extraImages) })));
         partial = { episodes: this.episodes() };
         break;
       case 'characters':
@@ -333,21 +340,22 @@ export class App implements AfterViewChecked, OnDestroy {
         partial = { characters: this.characters() };
         break;
       case 'moodboard':
+        this.moodBoard.update(list => list.map(item => ({ ...item, extraImages: this.cleanImages(item.extraImages) })));
         partial = { moodBoard: this.moodBoard() };
         break;
       case 'technicalities':
-        this.technicalities.update(list => list.map(t => ({ ...t, links: this.cleanLinks(t.links) })));
+        this.technicalities.update(list => list.map(t => ({ ...t, extraImages: this.cleanImages(t.extraImages), links: this.cleanLinks(t.links) })));
         partial = { technicalities: this.technicalities() };
         break;
       case 'directors':
         partial = {
           directorsNotesText: this.directorsNotesText(),
-          directorsNotesImages: this.directorsNotesImages(),
-          articles: this.articles()
+          directorsNotesImages: this.directorsNotesImages().map(item => ({ ...item, extraImages: this.cleanImages(item.extraImages) })),
+          articles: this.articles().map(article => ({ ...article, extraImages: this.cleanImages(article.extraImages) }))
         };
         break;
       case 'about':
-        this.aboutMe.update(a => ({ ...a, links: this.cleanLinks(a.links) }));
+        this.aboutMe.update(a => ({ ...a, extraImages: this.cleanImages(a.extraImages), links: this.cleanLinks(a.links) }));
         partial = { aboutMe: this.aboutMe() };
         break;
     }
@@ -582,6 +590,36 @@ export class App implements AfterViewChecked, OnDestroy {
     return [c.photo, ...(c.extraPhotos ?? [])].map(u => (u || '').trim()).filter(Boolean);
   }
 
+  contentImages(primary: string, extra?: string[]): string[] {
+    return [primary, ...(extra ?? [])].map(u => (u || '').trim()).filter(Boolean);
+  }
+
+  currentContentImage(key: string, length: number): number {
+    return Math.min(this.imageSlides()[key] ?? 0, Math.max(0, length - 1));
+  }
+
+  goToContentImage(key: string, index: number): void {
+    this.imageSlides.update(slides => ({ ...slides, [key]: index }));
+  }
+
+  addContentImage(item: { extraImages?: string[] }): void {
+    item.extraImages = [...(item.extraImages ?? []), ''];
+  }
+
+  setContentImage(item: { extraImages?: string[] }, index: number, url: string): void {
+    const images = [...(item.extraImages ?? [])];
+    images[index] = url;
+    item.extraImages = images;
+  }
+
+  removeContentImage(item: { extraImages?: string[] }, index: number): void {
+    item.extraImages = (item.extraImages ?? []).filter((_, imageIndex) => imageIndex !== index);
+  }
+
+  private cleanImages(images?: string[]): string[] {
+    return (images ?? []).map(url => (url || '').trim()).filter(Boolean);
+  }
+
   currentIndex(c: CharacterEntry): number {
     const len = this.charImages(c).length;
     return Math.min(this.charSlides()[c.id] ?? 0, Math.max(0, len - 1));
@@ -656,7 +694,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /* ---------- EPISODES ---------- */
   addEpisode(): void {
-    this.episodes.update(list => [...list, { id: this.nextId(), title: '', text: '', image: '' }]);
+    this.episodes.update(list => [...list, { id: this.nextId(), title: '', text: '', image: '', extraImages: [] }]);
   }
   removeEpisode(id: number): void {
     this.episodes.update(list => list.filter(ep => ep.id !== id));
@@ -680,7 +718,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /* ---------- TECHNICALITIES ---------- */
   addTechItem(): void {
-    this.technicalities.update(list => [...list, { id: this.nextId(), image: '', heading: '', text: '', links: [] }]);
+    this.technicalities.update(list => [...list, { id: this.nextId(), image: '', extraImages: [], heading: '', text: '', links: [] }]);
   }
   removeTechItem(id: number): void {
     this.technicalities.update(list => list.filter(t => t.id !== id));
