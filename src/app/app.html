@@ -143,7 +143,7 @@
         <div class="card-grid episodes-grid">
           <article class="glass-card" *ngFor="let ep of episodes(); trackBy: trackById">
             <div class="card-image-wrap portrait small-image" *ngIf="ep.image">
-              <img [src]="ep.image" [alt]="ep.title" />
+              <img class="zoomable" [src]="ep.image" [alt]="ep.title" (click)="openImage([ep.image], 0, ep.title)" />
             </div>
 
             <ng-container *ngIf="!editing['episodic']; else epEdit">
@@ -172,10 +172,23 @@
         <div class="section-tag">04 // CHARACTER DETAILS</div>
 
         <div class="card-grid characters-grid">
-          <article class="glass-card" *ngFor="let char of characters(); trackBy: trackById">
-            <div class="card-image-wrap portrait round" *ngIf="char.photo">
-              <img [src]="char.photo" [alt]="char.name" />
-            </div>
+          <article class="glass-card" *ngFor="let char of characters(); trackBy: trackById"
+                   (mouseenter)="hoveredCharId = char.id" (mouseleave)="hoveredCharId = null">
+
+            <ng-container *ngIf="charImages(char) as imgs">
+              <div class="card-image-wrap portrait round char-carousel" *ngIf="imgs.length">
+                <img class="zoomable" [src]="imgs[currentIndex(char)]" [alt]="char.name"
+                     (click)="openImage(imgs, currentIndex(char), char.name)" />
+
+                <div class="carousel-dots" *ngIf="imgs.length > 1">
+                  <button type="button" class="dot"
+                          *ngFor="let img of imgs; let i = index; trackBy: trackByIndex"
+                          [class.active]="i === currentIndex(char)"
+                          [attr.aria-label]="'Show image ' + (i + 1)"
+                          (click)="goToImage(char, i)"></button>
+                </div>
+              </div>
+            </ng-container>
 
             <ng-container *ngIf="!editing['characters']; else charEdit">
               <h3>{{ char.name }}</h3>
@@ -187,7 +200,24 @@
               <input class="edit-input" [(ngModel)]="char.name" placeholder="Character name" name="charName{{ char.id }}" />
               <input class="edit-input" [(ngModel)]="char.role" placeholder="Role (e.g. Protagonist)" name="charRole{{ char.id }}" />
               <textarea class="edit-textarea" [(ngModel)]="char.description" rows="4" placeholder="Character description" name="charDesc{{ char.id }}"></textarea>
-              <input class="edit-input" [(ngModel)]="char.photo" placeholder="Photo URL (https://...)" name="charPhoto{{ char.id }}" />
+
+              <input class="edit-input" [(ngModel)]="char.photo" placeholder="Image 1 URL (https://...)" name="charPhoto{{ char.id }}" />
+
+              <div class="link-edit-row" *ngFor="let url of char.extraPhotos ?? []; let i = index; trackBy: trackByIndex">
+                <input class="edit-input" type="url" [ngModel]="url"
+                       (ngModelChange)="setExtraPhoto(char, i, $event)"
+                       [placeholder]="'Image ' + (i + 2) + ' URL (https://...)'"
+                       [name]="'charExtra' + char.id + '_' + i" />
+                <button class="btn danger small" (click)="removeExtraPhoto(char, i)">✕</button>
+              </div>
+              <button class="btn small ghost add-btn" (click)="addExtraPhoto(char)">+ Add image URL</button>
+
+              <label class="interval-field">
+                <span>Auto-scroll interval (seconds)</span>
+                <input class="edit-input" type="number" min="1" max="60" step="1"
+                       [(ngModel)]="char.autoScrollSeconds" name="charInterval{{ char.id }}" placeholder="4" />
+              </label>
+
               <button class="btn danger small" (click)="removeCharacter(char.id)">Remove character</button>
             </ng-template>
           </article>
@@ -206,7 +236,8 @@
 
         <div class="mood-grid">
           <figure class="mood-tile portrait-tile" *ngFor="let m of moodBoard(); trackBy: trackById">
-            <img *ngIf="m.src" [src]="m.src" [alt]="m.caption || 'Mood board image'" />
+            <img *ngIf="m.src" class="zoomable" [src]="m.src" [alt]="m.caption || 'Mood board image'"
+                 (click)="openImage([m.src], 0, m.caption)" />
 
             <ng-container *ngIf="editing['moodboard']; else moodCaption">
               <input class="edit-input tile-caption-input" [(ngModel)]="m.src" placeholder="Image URL (https://...)" name="moodSrc{{ m.id }}" />
@@ -234,7 +265,7 @@
         <div class="tech-stack">
           <article class="tech-row" *ngFor="let item of technicalities(); trackBy: trackById">
             <div class="card-image-wrap portrait tall" *ngIf="item.image">
-              <img [src]="item.image" [alt]="item.heading" />
+              <img class="zoomable" [src]="item.image" [alt]="item.heading" (click)="openImage([item.image], 0, item.heading)" />
             </div>
 
             <div class="tech-copy">
@@ -290,7 +321,8 @@
 
         <div class="mood-grid" *ngIf="directorsNotesImages().length || isAdmin">
           <figure class="mood-tile" *ngFor="let img of directorsNotesImages(); trackBy: trackById">
-            <img *ngIf="img.src" [src]="img.src" [alt]="img.caption || 'Director notes image'" />
+            <img *ngIf="img.src" class="zoomable" [src]="img.src" [alt]="img.caption || 'Director notes image'"
+                 (click)="openImage([img.src], 0, img.caption)" />
             <figcaption *ngIf="img.caption">{{ img.caption }}</figcaption>
             <button class="tile-remove" *ngIf="isAdmin && editing['directors']" (click)="removeDirectorsImage(img.id)">✕</button>
           </figure>
@@ -299,7 +331,7 @@
         <h4 class="sub-heading" *ngIf="articles().length || isAdmin">Press &amp; Articles</h4>
         <div class="article-grid">
           <article class="article-card" *ngFor="let a of articles(); trackBy: trackById">
-            <img [src]="a.image" [alt]="a.title" *ngIf="a.image" />
+            <img class="zoomable" [src]="a.image" [alt]="a.title" *ngIf="a.image" (click)="openImage([a.image], 0, a.title)" />
 
             <ng-container *ngIf="!editing['directors']; else articleEdit">
               <h5>{{ a.title }}</h5>
@@ -333,7 +365,7 @@
 
         <div class="about-layout">
           <div class="card-image-wrap portrait round" *ngIf="aboutMe().photo">
-            <img [src]="aboutMe().photo" alt="Director photo" />
+            <img class="zoomable" [src]="aboutMe().photo" alt="Director photo" (click)="openImage([aboutMe().photo], 0, 'Director')" />
           </div>
 
           <div class="about-copy">
@@ -370,4 +402,22 @@
       <p>SWECHHA SYSTEM // END OF TRANSMISSION</p>
     </footer>
   </ng-container>
+
+  <!-- IMAGE MODAL (lightbox) -->
+  <div class="lightbox" *ngIf="lightbox() as lb" (click)="closeImage()" role="dialog" aria-modal="true">
+    <button class="lightbox-close" type="button" aria-label="Close" (click)="closeImage()">✕</button>
+
+    <button class="lightbox-nav prev" type="button" *ngIf="lb.images.length > 1" aria-label="Previous image"
+            (click)="stepLightbox(-1); $event.stopPropagation()">‹</button>
+
+    <figure class="lightbox-figure" (click)="$event.stopPropagation()">
+      <img [src]="lb.images[lb.index]" [alt]="lb.alt" />
+      <figcaption *ngIf="lb.alt || lb.images.length > 1">
+        {{ lb.alt }}<span *ngIf="lb.images.length > 1"> · {{ lb.index + 1 }} / {{ lb.images.length }}</span>
+      </figcaption>
+    </figure>
+
+    <button class="lightbox-nav next" type="button" *ngIf="lb.images.length > 1" aria-label="Next image"
+            (click)="stepLightbox(1); $event.stopPropagation()">›</button>
+  </div>
 </div>

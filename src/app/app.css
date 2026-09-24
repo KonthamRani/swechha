@@ -45,10 +45,6 @@ button, input, textarea, select {
 
 /* =========================================================
    BACKGROUND REFERENCE OVERLAY (spec §10)
-   Sits behind absolutely everything, on every screen. A large,
-   blurred, very-low-opacity image with a slow drift/scale so it
-   reads as "something hidden behind the interface" rather than
-   an obvious photo.
    ========================================================= */
 .bg-reference-overlay {
   position: fixed;
@@ -441,7 +437,6 @@ button, input, textarea, select {
 
 /* =========================================================
    POST-LOGIN INTRO / GLITCH TITLE
-   The first screen after loading is complete.
    ========================================================= */
 .intro-screen {
   position: relative;
@@ -1154,3 +1149,110 @@ button, input, textarea, select {
 @media (hover: none) and (pointer: coarse) {
   .glass-card:hover { transform: none; }
 }
+
+/* =========================================================
+   CLICKABLE IMAGES + LIGHTBOX
+   ========================================================= */
+img.zoomable { cursor: zoom-in; }
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;               /* above logo (95), glitch (90), HUD (75) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 12px;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(6px);
+  animation: lightboxIn 0.2s ease-out;
+}
+@keyframes lightboxIn { from { opacity: 0; } to { opacity: 1; } }
+
+.lightbox-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+}
+.lightbox-figure img {
+  display: block;
+  max-width: min(92vw, 1400px);
+  max-height: 82vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;        /* full image, never cropped */
+  border: 1px solid rgba(255, 22, 61, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 0 60px rgba(255, 22, 61, 0.25);
+}
+.lightbox-figure figcaption {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: center;
+}
+.lightbox-close,
+.lightbox-nav {
+  border: 1px solid rgba(255, 22, 61, 0.45);
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.lightbox-close:hover,
+.lightbox-nav:hover { background: rgba(255, 22, 61, 0.25); box-shadow: 0 0 16px rgba(255, 22, 61, 0.4); }
+.lightbox-close { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 38px; height: 38px; z-index: 2; }
+.lightbox-nav { width: 42px; height: 42px; font-size: 1.6rem; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .lightbox-nav { position: absolute; bottom: 18px; }
+  .lightbox-nav.prev { left: 18px; }
+  .lightbox-nav.next { right: 18px; }
+}
+
+/* =========================================================
+   CHARACTER CAROUSEL
+   ========================================================= */
+.char-carousel img { transition: opacity 0.35s ease; }
+
+.carousel-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
+}
+.carousel-dots .dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.carousel-dots .dot.active {
+  background: var(--red);
+  border-color: var(--red);
+  transform: scale(1.25);
+  box-shadow: 0 0 8px var(--red);
+}
+
+.interval-field { display: grid; gap: 4px; margin-bottom: 8px; }
+.interval-field span {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.interval-field .edit-input { margin-bottom: 0; max-width: 120px; }

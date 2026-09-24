@@ -15,10 +15,6 @@ import { ContentService, SwechhaContent } from './content.service';
 
 /* =========================================================
    DATA MODELS
-   Every image field now has a matching `<field>Path` sibling —
-   the Firebase Storage path for that file. It's what lets us
-   delete the old image after a replacement upload succeeds,
-   instead of leaving orphaned files behind in Storage.
    ========================================================= */
 export interface ImageRef {
   url: string;
@@ -37,7 +33,9 @@ export interface CharacterEntry {
   name: string;
   role: string;
   description: string;
-  photo: string;
+  photo: string;                 // image #1 (unchanged, backwards compatible)
+  extraPhotos?: string[];        // additional image URLs
+  autoScrollSeconds?: number;    // carousel interval in seconds (default 4)
 }
 
 export interface MoodImage {
@@ -91,8 +89,7 @@ export class App implements AfterViewChecked, OnDestroy {
   password = '';
   isAdmin = false;
 
-  /* ---------- TIMER / NETWORK-DRIVEN STATE (signals — see note
-     in earlier revisions on why these can't be plain fields) ---------- */
+  /* ---------- TIMER / NETWORK-DRIVEN STATE ---------- */
   isLoggedIn = signal(false);
   isLoading = signal(false);
   loadingProgress = signal(0);
@@ -103,8 +100,16 @@ export class App implements AfterViewChecked, OnDestroy {
   logoDocked = signal(false);
   introDismissed = signal(false);
 
+  /* ---------- LIGHTBOX + CHARACTER CAROUSEL ---------- */
+  lightbox = signal<{ images: string[]; index: number; alt: string } | null>(null);
+  charSlides = signal<Record<number, number>>({});
+  hoveredCharId: number | null = null;
 
-  /** Large ambient backdrop image (section 10 of the spec). Falls back to a bundled asset until an admin overrides it. */
+  private carouselTimer: any = null;
+  private lastAdvance = new Map<number, number>();
+  private readonly DEFAULT_INTERVAL = 4;
+
+  /** Large ambient backdrop image. Falls back to a bundled asset until an admin overrides it. */
   backgroundImage = signal<ImageRef>({ url: '' });
 
   private loadingTimer: any = null;
@@ -158,11 +163,7 @@ export class App implements AfterViewChecked, OnDestroy {
   };
 
   /* =========================================================
-     CONTENT — signals, one example card per section. Admin
-     grows each list with the "+ Add" controls; new items start
-     with EMPTY text fields (real HTML placeholders carry the
-     hint text in the template) and no image until one is
-     uploaded.
+     CONTENT
      ========================================================= */
 
   logline = signal(
@@ -191,7 +192,9 @@ export class App implements AfterViewChecked, OnDestroy {
       name: 'ARYA NAIR',
       role: 'Protagonist / Operator',
       description: 'A network technician who begins to suspect the platform she maintains is watching more than it protects.',
-      photo: 'https://placehold.co/400x500/0a0000/ff163d?text=ARYA'
+      photo: 'https://placehold.co/400x500/0a0000/ff163d?text=ARYA',
+      extraPhotos: [],
+      autoScrollSeconds: 4
     }
   ]);
 
@@ -315,6 +318,14 @@ export class App implements AfterViewChecked, OnDestroy {
         partial = { episodes: this.episodes() };
         break;
       case 'characters':
+        // Strip blank extra URLs, clamp the interval, and avoid undefined (Firestore rejects it)
+        this.characters.update(list =>
+          list.map(c => ({
+            ...c,
+            extraPhotos: (c.extraPhotos ?? []).map(u => (u || '').trim()).filter(Boolean),
+            autoScrollSeconds: this.clampInterval(c.autoScrollSeconds)
+          }))
+        );
         partial = { characters: this.characters() };
         break;
       case 'moodboard':
@@ -363,6 +374,8 @@ export class App implements AfterViewChecked, OnDestroy {
     if (this.dockTimer) clearTimeout(this.dockTimer);
     if (this.noiseRafId !== null) cancelAnimationFrame(this.noiseRafId);
     if (this.revealObserver) this.revealObserver.disconnect();
+    this.stopCarousel();
+    document.body.style.overflow = '';
   }
 
   private initRevealObserver(slides: NodeListOf<Element>): void {
@@ -390,6 +403,14 @@ export class App implements AfterViewChecked, OnDestroy {
     this.resizeNoiseCanvas();
   }
 
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(e: KeyboardEvent): void {
+    if (!this.lightbox()) return;
+    if (e.key === 'Escape') this.closeImage();
+    else if (e.key === 'ArrowRight') this.stepLightbox(1);
+    else if (e.key === 'ArrowLeft') this.stepLightbox(-1);
+  }
+
   /* =========================================================
      LOGIN
      ========================================================= */
@@ -402,6 +423,8 @@ export class App implements AfterViewChecked, OnDestroy {
   logout(): void {
     if (this.loadingTimer) clearInterval(this.loadingTimer);
     if (this.dockTimer) clearTimeout(this.dockTimer);
+    this.stopCarousel();
+    this.closeImage();
     this.isLoggedIn.set(false);
     this.isLoading.set(false);
     this.logoDocked.set(false);
@@ -423,8 +446,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /**
    * SYSTEM INITIALIZING -> VERIFYING ACCESS -> LOADING ARCHIVE ->
-   * DECRYPTING CONTENT -> ACCESS GRANTED, ~3.5–4s total, smooth
-   * progress (no artificial stalls — just deliberate, not tedious).
+   * DECRYPTING CONTENT -> ACCESS GRANTED, ~3.5–4s total.
    */
   private startLoadingSequence(): void {
     this.isLoading.set(true);
@@ -456,6 +478,7 @@ export class App implements AfterViewChecked, OnDestroy {
         setTimeout(() => {
           this.isLoading.set(false);
           this.isLoggedIn.set(true);
+          this.startCarousel();
           this.logoDocked.set(false);
           this.triggerGlitch();
           this.dockTimer = setTimeout(() => this.logoDocked.set(true), 650);
@@ -512,6 +535,98 @@ export class App implements AfterViewChecked, OnDestroy {
   };
 
   /* =========================================================
+     LIGHTBOX
+     ========================================================= */
+  openImage(images: string[], index = 0, alt = ''): void {
+    const list = images.filter(Boolean);
+    if (!list.length) return;
+    this.lightbox.set({ images: list, index: Math.min(index, list.length - 1), alt });
+    document.body.style.overflow = 'hidden';
+  }
+
+  closeImage(): void {
+    this.lightbox.set(null);
+    document.body.style.overflow = '';
+  }
+
+  stepLightbox(dir: number): void {
+    const lb = this.lightbox();
+    if (!lb || lb.images.length < 2) return;
+    const index = (lb.index + dir + lb.images.length) % lb.images.length;
+    this.lightbox.set({ ...lb, index });
+  }
+
+  /* =========================================================
+     CHARACTER IMAGES + AUTO-SCROLL
+     ========================================================= */
+  charImages(c: CharacterEntry): string[] {
+    return [c.photo, ...(c.extraPhotos ?? [])].map(u => (u || '').trim()).filter(Boolean);
+  }
+
+  currentIndex(c: CharacterEntry): number {
+    const len = this.charImages(c).length;
+    return Math.min(this.charSlides()[c.id] ?? 0, Math.max(0, len - 1));
+  }
+
+  goToImage(c: CharacterEntry, i: number): void {
+    this.charSlides.update(s => ({ ...s, [c.id]: i }));
+    this.lastAdvance.set(c.id, Date.now()); // restart this card's timer
+  }
+
+  addExtraPhoto(c: CharacterEntry): void {
+    c.extraPhotos = [...(c.extraPhotos ?? []), ''];
+  }
+  setExtraPhoto(c: CharacterEntry, i: number, url: string): void {
+    const list = [...(c.extraPhotos ?? [])];
+    list[i] = url;
+    c.extraPhotos = list;
+  }
+  removeExtraPhoto(c: CharacterEntry, i: number): void {
+    c.extraPhotos = (c.extraPhotos ?? []).filter((_, idx) => idx !== i);
+  }
+
+  private clampInterval(v: unknown): number {
+    return Math.min(60, Math.max(1, Number(v) || this.DEFAULT_INTERVAL));
+  }
+
+  private startCarousel(): void {
+    this.stopCarousel();
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    this.carouselTimer = setInterval(() => this.carouselTick(), 500);
+  }
+
+  private stopCarousel(): void {
+    if (this.carouselTimer) clearInterval(this.carouselTimer);
+    this.carouselTimer = null;
+  }
+
+  private carouselTick(): void {
+    // Pause while the modal is open or characters are being edited
+    if (this.lightbox() || this.editing['characters']) return;
+
+    const now = Date.now();
+    const next = { ...this.charSlides() };
+    let changed = false;
+
+    for (const c of this.characters()) {
+      const len = this.charImages(c).length;
+      if (len < 2 || this.hoveredCharId === c.id) {   // pause on hover
+        this.lastAdvance.set(c.id, now);
+        continue;
+      }
+      const last = this.lastAdvance.get(c.id) ?? now;
+      if (!this.lastAdvance.has(c.id)) this.lastAdvance.set(c.id, now);
+
+      if (now - last >= this.clampInterval(c.autoScrollSeconds) * 1000) {
+        next[c.id] = ((next[c.id] ?? 0) + 1) % len;
+        this.lastAdvance.set(c.id, now);
+        changed = true;
+      }
+    }
+    if (changed) this.charSlides.set(next);
+  }
+
+  /* =========================================================
      EDIT TOGGLE
      ========================================================= */
   toggleEdit(section: string): void {
@@ -519,9 +634,6 @@ export class App implements AfterViewChecked, OnDestroy {
     this.editing[section] = !wasEditing;
     if (wasEditing) this.saveSection(section);
   }
-
-
-
 
   /* ---------- EPISODES ---------- */
   addEpisode(): void {
@@ -533,7 +645,10 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /* ---------- CHARACTERS ---------- */
   addCharacter(): void {
-    this.characters.update(list => [...list, { id: this.nextId(), name: '', role: '', description: '', photo: '' }]);
+    this.characters.update(list => [
+      ...list,
+      { id: this.nextId(), name: '', role: '', description: '', photo: '', extraPhotos: [], autoScrollSeconds: 4 }
+    ]);
   }
   removeCharacter(id: number): void {
     this.characters.update(list => list.filter(char => char.id !== id));
@@ -549,7 +664,6 @@ export class App implements AfterViewChecked, OnDestroy {
     this.technicalities.update(list => [...list, { id: this.nextId(), image: '', heading: '', text: '', links: [] }]);
   }
   removeTechItem(id: number): void {
-    const item = this.technicalities().find(t => t.id === id);
     this.technicalities.update(list => list.filter(t => t.id !== id));
   }
   addTechLink(item: TechItem): void {
@@ -574,7 +688,6 @@ export class App implements AfterViewChecked, OnDestroy {
   }
 
   /* ---------- DIRECTOR'S NOTES ---------- */
-
   addArticle(): void {
     this.articles.update(list => [...list, { id: this.nextId(), title: '', description: '', link: '', image: '' }]);
   }
@@ -590,9 +703,12 @@ export class App implements AfterViewChecked, OnDestroy {
     this.aboutMe.update(a => ({ ...a, links: a.links.filter(l => l.id !== id) }));
   }
 
-
   /* ---------- MISC ---------- */
   trackById(_index: number, item: { id: number }): number {
     return item.id;
+  }
+
+  trackByIndex(index: number): number {
+    return index;
   }
 }
