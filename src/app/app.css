@@ -767,12 +767,38 @@ button, input, textarea, select {
 }
 
 .section-tag {
-  font-size: clamp(0.66rem, 2.4vw, 0.8rem);
+  font-size: clamp(0.82rem, 2.8vw, 1.05rem);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--muted);
 }
 .section-tag::before { content: "// "; color: var(--red); }
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 22, 61, 0.3);
+  border-left: 3px solid var(--red);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.58);
+  box-shadow: 0 5px 22px rgba(0, 0, 0, 0.24);
+}
+.section-heading .section-tag { width: auto; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.section-edit {
+  flex: 0 0 auto;
+  border: 1px solid rgba(0, 247, 255, 0.42);
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: rgba(0, 247, 255, 0.08);
+  color: var(--cyan);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.section-edit:hover { background: rgba(0, 247, 255, 0.16); }
 .sub-heading {
   margin: 8px 0 -4px;
   font-size: 0.9rem;
@@ -945,12 +971,12 @@ button, input, textarea, select {
 }
 .mood-tile img {
   width: 100%;
-  height: 40vh;
+  height: 80vh;
   object-fit: cover;
   display: block;
   transition: transform 0.4s ease;
 }
-.mood-tile.portrait-tile img { height: 40vh; }
+.mood-tile.portrait-tile img { height: 80vh; }
 .mood-tile:hover img { transform: scale(1.06); }
 .mood-tile figcaption {
   position: absolute;
@@ -972,6 +998,17 @@ button, input, textarea, select {
   font-size: 0.7rem;
   padding: 6px 8px;
   background: rgba(0, 0, 0, 0.65);
+}
+.mood-tile.editing {
+  overflow: visible;
+  padding-bottom: 8px;
+}
+.mood-tile.editing .tile-caption-input {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: calc(100% - 12px);
+  margin: 8px 6px 0;
 }
 .tile-remove {
   position: absolute;
@@ -1038,8 +1075,9 @@ button, input, textarea, select {
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 .tech-link:hover { background: rgba(0, 247, 255, 0.1); box-shadow: 0 0 14px rgba(0, 247, 255, 0.35); }
-.link-edit-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
-.link-edit-row .edit-input { margin-bottom: 0; }
+.link-edit-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; min-width: 0; }
+.link-edit-row .edit-input { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+.link-edit-row .btn { flex: 0 0 auto; }
 .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 
 /* =========================================================
@@ -1109,7 +1147,19 @@ button, input, textarea, select {
     text-align: left;
   }
 }
-.about-copy { position: relative; width: 100%; }
+.about-layout > *,
+.about-copy { position: relative; width: 100%; min-width: 0; max-width: 100%; }
+.about-copy .body-text,
+.about-copy .tech-link,
+.article-card p,
+.glass-card p,
+.tech-copy p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.about-copy .body-text { text-align: left; }
+.link-row { min-width: 0; }
+.tech-link { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 
 /* =========================================================
    ADMIN CONTROLS BAR
@@ -1169,7 +1219,22 @@ button, input, textarea, select {
   .top-hud { flex-direction: row; }
   .hud-title { font-size: 0.64rem; padding: 7px 10px; }
   .content-slide { gap: 16px; }
-  .card-image-wrap.round { width: 40vw; }
+  .card-image-wrap.small-image {
+    float: none;
+    width: min(100%, 220px);
+    margin: 0 auto 10px;
+    shape-outside: none;
+  }
+  .card-image-wrap.round {
+    width: min(180px, 60vw);
+    margin-inline: auto;
+  }
+  .tech-row .card-image-wrap {
+    width: min(100%, 220px);
+    max-width: none;
+    margin-inline: auto;
+  }
+  .mood-tile img { height: 40vh; min-height: 220px; }
 }
 
 @media (hover: none) and (pointer: coarse) {
@@ -1277,6 +1342,14 @@ img.zoomable { cursor: zoom-in; }
 .tile-image-edit { position: relative; z-index: 3; padding: 8px; }
 .tile-image-edit .edit-input { margin-bottom: 0; }
 .tile-image-add { position: relative; z-index: 3; margin: 0 8px 8px; }
+.tile-interval { position: relative; z-index: 3; margin: 8px; }
+
+@media (max-width: 640px) {
+  .link-edit-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .about-layout { gap: 16px; }
+  .about-layout .card-image-wrap.round { width: min(180px, 60vw); }
+  .article-card .link-edit-row .edit-input { width: 100%; margin-left: 0; margin-right: 0; }
+}
 
 .interval-field { display: grid; gap: 4px; margin-bottom: 8px; }
 .interval-field span {

@@ -127,7 +127,7 @@
 
     <main class="story">
       <section class="content-slide" id="logline">
-        <div class="section-tag">01 // LOGLINE</div>
+        <div class="section-heading"><div class="section-tag">01 // LOGLINE</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('logline')">{{ editing['logline'] ? 'SAVE' : 'EDIT' }}</button></div>
         <div class="terminal-card wide">
           <ng-container *ngIf="!editing['logline']; else loglineEdit">
             <p class="body-text">{{ logline() }}</p>
@@ -143,7 +143,7 @@
       </section>
 
       <section class="content-slide" id="synopsis">
-        <div class="section-tag">02 // SYNOPSIS</div>
+        <div class="section-heading"><div class="section-tag">02 // SYNOPSIS</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('synopsis')">{{ editing['synopsis'] ? 'SAVE' : 'EDIT' }}</button></div>
         <div class="terminal-card wide">
           <ng-container *ngIf="!editing['synopsis']; else synopsisEdit">
             <p class="body-text">{{ synopsis() }}</p>
@@ -159,7 +159,7 @@
       </section>
 
       <section class="content-slide" id="episodic">
-        <div class="section-tag">03 // EPISODIC SYNOPSIS</div>
+        <div class="section-heading"><div class="section-tag">03 // EPISODIC SYNOPSIS</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('episodic')">{{ editing['episodic'] ? 'SAVE' : 'EDIT' }}</button></div>
 
         <div class="card-grid episodes-grid">
           <article class="glass-card" *ngFor="let ep of episodes(); trackBy: trackById">
@@ -191,21 +191,19 @@
                 <button class="btn danger small" (click)="removeContentImage(ep, i)">✕</button>
               </div>
               <button class="btn small ghost add-btn" (click)="addContentImage(ep)">+ Add image URL</button>
+              <label class="interval-field"><span>Auto-scroll interval (seconds)</span><input class="edit-input" type="number" min="1" max="60" step="1" [(ngModel)]="ep.autoScrollSeconds" name="epInterval{{ ep.id }}" /></label>
               <button class="btn danger small" (click)="removeEpisode(ep.id)">Remove episode</button>
             </ng-template>
           </article>
         </div>
 
         <div class="section-admin-bar" *ngIf="isAdmin">
-          <button class="btn small" (click)="toggleEdit('episodic')">
-            {{ editing['episodic'] ? '💾 Done editing' : '✎ Edit episodes' }}
-          </button>
           <button class="btn small ghost add-btn" *ngIf="editing['episodic']" (click)="addEpisode()">+ Add episode</button>
         </div>
       </section>
 
       <section class="content-slide" id="characters">
-        <div class="section-tag">04 // CHARACTER DETAILS</div>
+        <div class="section-heading"><div class="section-tag">04 // CHARACTER DETAILS</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('characters')">{{ editing['characters'] ? 'SAVE' : 'EDIT' }}</button></div>
 
         <div class="card-grid characters-grid">
           <article class="glass-card" *ngFor="let char of characters(); trackBy: trackById"
@@ -260,18 +258,16 @@
         </div>
 
         <div class="section-admin-bar" *ngIf="isAdmin">
-          <button class="btn small" (click)="toggleEdit('characters')">
-            {{ editing['characters'] ? '💾 Done editing' : '✎ Edit characters' }}
-          </button>
           <button class="btn small ghost add-btn" *ngIf="editing['characters']" (click)="addCharacter()">+ Add character</button>
         </div>
       </section>
 
       <section class="content-slide" id="moodboard">
-        <div class="section-tag">05 // MOOD BOARD</div>
+        <div class="section-heading"><div class="section-tag">05 // MOOD BOARD</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('moodboard')">{{ editing['moodboard'] ? 'SAVE' : 'EDIT' }}</button></div>
 
         <div class="mood-grid">
-          <figure class="mood-tile portrait-tile" *ngFor="let m of moodBoard(); trackBy: trackById">
+            <figure class="mood-tile portrait-tile" *ngFor="let m of moodBoard(); trackBy: trackById"
+              [class.editing]="editing['moodboard']">
             <ng-container *ngIf="contentImages(m.src, m.extraImages) as imgs">
               <img *ngIf="imgs.length" class="zoomable" [src]="imgs[currentContentImage('mood-' + m.id, imgs.length)]"
                    [alt]="m.caption || 'Mood board image'" (click)="openImage(imgs, currentContentImage('mood-' + m.id, imgs.length), m.caption)" />
@@ -291,6 +287,7 @@
               </div>
               <button class="btn small ghost add-btn tile-image-add" (click)="addContentImage(m)">+ Add image URL</button>
               <input class="edit-input tile-caption-input tile-caption-lower" [(ngModel)]="m.caption" placeholder="Caption (optional)" name="moodCaption{{ m.id }}" />
+              <label class="interval-field tile-interval"><span>Auto-scroll interval (seconds)</span><input class="edit-input" type="number" min="1" max="60" step="1" [(ngModel)]="m.autoScrollSeconds" name="moodInterval{{ m.id }}" /></label>
             </ng-container>
             <ng-template #moodCaption>
               <figcaption *ngIf="m.caption">{{ m.caption }}</figcaption>
@@ -301,15 +298,12 @@
         </div>
 
         <div class="section-admin-bar" *ngIf="isAdmin">
-          <button class="btn small" (click)="toggleEdit('moodboard')">
-            {{ editing['moodboard'] ? '💾 Done editing' : '✎ Edit mood board' }}
-          </button>
           <button class="btn small ghost add-btn" *ngIf="editing['moodboard']" (click)="addMoodImage()">+ Add image</button>
         </div>
       </section>
 
       <section class="content-slide" id="technicalities">
-        <div class="section-tag">06 // TECHNICALITIES</div>
+        <div class="section-heading"><div class="section-tag">06 // TECHNICALITIES</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('technicalities')">{{ editing['technicalities'] ? 'SAVE' : 'EDIT' }}</button></div>
 
         <div class="tech-stack">
           <article class="tech-row" *ngFor="let item of technicalities(); trackBy: trackById">
@@ -346,6 +340,7 @@
                     <button class="btn danger small" (click)="removeContentImage(item, i)">✕</button>
                   </div>
                   <button class="btn small ghost add-btn" (click)="addContentImage(item)">+ Add image URL</button>
+                  <label class="interval-field"><span>Auto-scroll interval (seconds)</span><input class="edit-input" type="number" min="1" max="60" step="1" [(ngModel)]="item.autoScrollSeconds" name="techInterval{{ item.id }}" /></label>
 
                 <div class="link-edit-row" *ngFor="let l of item.links">
                   <input class="edit-input" [(ngModel)]="l.label" placeholder="Link title" name="linkLabel{{ l.id }}" />
@@ -363,15 +358,12 @@
         </div>
 
         <div class="section-admin-bar" *ngIf="isAdmin">
-          <button class="btn small" (click)="toggleEdit('technicalities')">
-            {{ editing['technicalities'] ? '💾 Done editing' : '✎ Edit technicalities' }}
-          </button>
           <button class="btn small ghost add-btn" *ngIf="editing['technicalities']" (click)="addTechItem()">+ Add section</button>
         </div>
       </section>
 
       <section class="content-slide" id="directors-notes">
-        <div class="section-tag">07 // DIRECTOR'S NOTES</div>
+        <div class="section-heading"><div class="section-tag">07 // DIRECTOR'S NOTES</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('directors')">{{ editing['directors'] ? 'SAVE' : 'EDIT' }}</button></div>
 
         <div class="terminal-card wide">
           <ng-container *ngIf="!editing['directors']; else notesEdit">
@@ -405,6 +397,7 @@
                 <button class="btn danger small" (click)="removeContentImage(img, i)">✕</button>
               </div>
               <button class="btn small ghost add-btn" (click)="addContentImage(img)">+ Add image URL</button>
+              <label class="interval-field"><span>Auto-scroll interval (seconds)</span><input class="edit-input" type="number" min="1" max="60" step="1" [(ngModel)]="img.autoScrollSeconds" name="directorInterval{{ img.id }}" /></label>
             </div>
             <button class="tile-remove" *ngIf="isAdmin && editing['directors']" (click)="removeDirectorsImage(img.id)">✕</button>
           </figure>
@@ -442,15 +435,13 @@
                 <button class="btn danger small" (click)="removeContentImage(a, i)">✕</button>
               </div>
               <button class="btn small ghost add-btn" (click)="addContentImage(a)">+ Add image URL</button>
+              <label class="interval-field"><span>Auto-scroll interval (seconds)</span><input class="edit-input" type="number" min="1" max="60" step="1" [(ngModel)]="a.autoScrollSeconds" name="articleInterval{{ a.id }}" /></label>
               <button class="btn danger small" (click)="removeArticle(a.id)">Remove article</button>
             </ng-template>
           </article>
         </div>
 
         <div class="section-admin-bar" *ngIf="isAdmin">
-          <button class="btn small" (click)="toggleEdit('directors')">
-            {{ editing['directors'] ? '💾 Done editing' : '✎ Edit director’s notes' }}
-          </button>
           <ng-container *ngIf="editing['directors']">
             <button class="btn small ghost add-btn" (click)="addDirectorsImage()">+ Add image</button>
             <button class="btn small ghost add-btn" (click)="addArticle()">+ Add article</button>
@@ -459,7 +450,7 @@
       </section>
 
       <section class="content-slide" id="about">
-        <div class="section-tag">08 // ABOUT ME</div>
+        <div class="section-heading"><div class="section-tag">08 // ABOUT ME</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('about')">{{ editing['about'] ? 'SAVE' : 'EDIT' }}</button></div>
 
         <div class="about-layout">
           <ng-container *ngIf="contentImages(aboutMe().photo, aboutMe().extraImages) as imgs">
@@ -493,6 +484,7 @@
                 <button class="btn danger small" (click)="removeContentImage(aboutMe(), i)">✕</button>
               </div>
               <button class="btn small ghost add-btn" (click)="addContentImage(aboutMe())">+ Add image URL</button>
+              <label class="interval-field"><span>Auto-scroll interval (seconds)</span><input class="edit-input" type="number" min="1" max="60" step="1" [(ngModel)]="aboutMe().autoScrollSeconds" name="aboutInterval" /></label>
 
               <div class="link-edit-row" *ngFor="let l of aboutMe().links">
                 <input class="edit-input" [(ngModel)]="l.label" placeholder="Link title" name="aboutLinkLabel{{ l.id }}" />

@@ -27,6 +27,7 @@ export interface Episode {
   text: string;
   image: string;
   extraImages?: string[];
+  autoScrollSeconds?: number;
 }
 
 export interface CharacterEntry {
@@ -44,6 +45,7 @@ export interface MoodImage {
   src: string;
   caption: string;
   extraImages?: string[];
+  autoScrollSeconds?: number;
 }
 
 export interface TechLink {
@@ -56,6 +58,7 @@ export interface TechItem {
   id: number;
   image: string;
   extraImages?: string[];
+  autoScrollSeconds?: number;
   heading: string;
   text: string;
   links: TechLink[];
@@ -68,6 +71,7 @@ export interface Article {
   link: string;
   image: string;
   extraImages?: string[];
+  autoScrollSeconds?: number;
 }
 
 export interface AboutLink {
@@ -114,7 +118,7 @@ export class App implements AfterViewChecked, OnDestroy {
   hoveredCharId: number | null = null;
 
   private carouselTimer: any = null;
-  private lastAdvance = new Map<number, number>();
+  private lastAdvance = new Map<string, number>();
   private readonly DEFAULT_INTERVAL = 4;
 
   /** Large ambient backdrop image. Falls back to a bundled asset until an admin overrides it. */
@@ -239,9 +243,10 @@ export class App implements AfterViewChecked, OnDestroy {
     }
   ]);
 
-  aboutMe = signal<{ photo: string; photoPath?: string; extraImages?: string[]; bio: string; links: AboutLink[] }>({
+  aboutMe = signal<{ photo: string; photoPath?: string; extraImages?: string[]; autoScrollSeconds?: number; bio: string; links: AboutLink[] }>({
     photo: 'https://placehold.co/400x500/0a0000/ff163d?text=DIRECTOR',
     extraImages: [],
+    autoScrollSeconds: 4,
     bio: 'I\u2019m a writer-director working at the intersection of thriller and speculative fiction. SWECHHA is my ' +
       'first serialized project, built from years of watching how cities and platforms quietly reshape each other.',
     links: [
@@ -325,7 +330,7 @@ export class App implements AfterViewChecked, OnDestroy {
         partial = { synopsis: this.synopsis() };
         break;
       case 'episodic':
-        this.episodes.update(list => list.map(ep => ({ ...ep, extraImages: this.cleanImages(ep.extraImages) })));
+        this.episodes.update(list => list.map(ep => ({ ...ep, extraImages: this.cleanImages(ep.extraImages), autoScrollSeconds: this.clampInterval(ep.autoScrollSeconds) })));
         partial = { episodes: this.episodes() };
         break;
       case 'characters':
@@ -340,22 +345,22 @@ export class App implements AfterViewChecked, OnDestroy {
         partial = { characters: this.characters() };
         break;
       case 'moodboard':
-        this.moodBoard.update(list => list.map(item => ({ ...item, extraImages: this.cleanImages(item.extraImages) })));
+        this.moodBoard.update(list => list.map(item => ({ ...item, extraImages: this.cleanImages(item.extraImages), autoScrollSeconds: this.clampInterval(item.autoScrollSeconds) })));
         partial = { moodBoard: this.moodBoard() };
         break;
       case 'technicalities':
-        this.technicalities.update(list => list.map(t => ({ ...t, extraImages: this.cleanImages(t.extraImages), links: this.cleanLinks(t.links) })));
+        this.technicalities.update(list => list.map(t => ({ ...t, extraImages: this.cleanImages(t.extraImages), autoScrollSeconds: this.clampInterval(t.autoScrollSeconds), links: this.cleanLinks(t.links) })));
         partial = { technicalities: this.technicalities() };
         break;
       case 'directors':
         partial = {
           directorsNotesText: this.directorsNotesText(),
-          directorsNotesImages: this.directorsNotesImages().map(item => ({ ...item, extraImages: this.cleanImages(item.extraImages) })),
-          articles: this.articles().map(article => ({ ...article, extraImages: this.cleanImages(article.extraImages) }))
+          directorsNotesImages: this.directorsNotesImages().map(item => ({ ...item, extraImages: this.cleanImages(item.extraImages), autoScrollSeconds: this.clampInterval(item.autoScrollSeconds) })),
+          articles: this.articles().map(article => ({ ...article, extraImages: this.cleanImages(article.extraImages), autoScrollSeconds: this.clampInterval(article.autoScrollSeconds) }))
         };
         break;
       case 'about':
-        this.aboutMe.update(a => ({ ...a, extraImages: this.cleanImages(a.extraImages), links: this.cleanLinks(a.links) }));
+        this.aboutMe.update(a => ({ ...a, extraImages: this.cleanImages(a.extraImages), autoScrollSeconds: this.clampInterval(a.autoScrollSeconds), links: this.cleanLinks(a.links) }));
         partial = { aboutMe: this.aboutMe() };
         break;
     }
@@ -386,7 +391,9 @@ export class App implements AfterViewChecked, OnDestroy {
     if (this.noiseRafId !== null) cancelAnimationFrame(this.noiseRafId);
     if (this.revealObserver) this.revealObserver.disconnect();
     this.stopCarousel();
-    document.body.style.overflow = '';
+    if (typeof document !== 'undefined') {
+document.body.style.overflow = '';
+}
   }
 
   private initRevealObserver(slides: NodeListOf<Element>): void {
@@ -627,7 +634,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   goToImage(c: CharacterEntry, i: number): void {
     this.charSlides.update(s => ({ ...s, [c.id]: i }));
-    this.lastAdvance.set(c.id, Date.now()); // restart this card's timer
+    this.lastAdvance.set(String(c.id), Date.now()); // restart this card's timer
   }
 
   addExtraPhoto(c: CharacterEntry): void {
@@ -658,29 +665,49 @@ export class App implements AfterViewChecked, OnDestroy {
   }
 
   private carouselTick(): void {
-    // Pause while the modal is open or characters are being edited
-    if (this.lightbox() || this.editing['characters']) return;
+    // Pause all carousels while the modal is open or any content is being edited.
+    if (this.lightbox() || Object.values(this.editing).some(Boolean)) return;
 
     const now = Date.now();
-    const next = { ...this.charSlides() };
+    const nextChars = { ...this.charSlides() };
+    const nextImages = { ...this.imageSlides() };
     let changed = false;
 
     for (const c of this.characters()) {
       const len = this.charImages(c).length;
       if (len < 2 || this.hoveredCharId === c.id) {   // pause on hover
-        this.lastAdvance.set(c.id, now);
+        this.lastAdvance.set(String(c.id), now);
         continue;
       }
-      const last = this.lastAdvance.get(c.id) ?? now;
-      if (!this.lastAdvance.has(c.id)) this.lastAdvance.set(c.id, now);
+      const characterKey = String(c.id);
+      const last = this.lastAdvance.get(characterKey) ?? now;
+      if (!this.lastAdvance.has(characterKey)) this.lastAdvance.set(characterKey, now);
 
       if (now - last >= this.clampInterval(c.autoScrollSeconds) * 1000) {
-        next[c.id] = ((next[c.id] ?? 0) + 1) % len;
-        this.lastAdvance.set(c.id, now);
+        nextChars[c.id] = ((nextChars[c.id] ?? 0) + 1) % len;
+        this.lastAdvance.set(characterKey, now);
         changed = true;
       }
     }
-    if (changed) this.charSlides.set(next);
+
+    const advance = (key: string, images: string[], interval: number | undefined): void => {
+      if (images.length < 2) return;
+      const last = this.lastAdvance.get(key) ?? now;
+      if (!this.lastAdvance.has(key)) this.lastAdvance.set(key, now);
+      if (now - last >= this.clampInterval(interval) * 1000) {
+        nextImages[key] = ((nextImages[key] ?? 0) + 1) % images.length;
+        this.lastAdvance.set(key, now);
+        changed = true;
+      }
+    };
+    for (const item of this.episodes()) advance(`episode-${item.id}`, this.contentImages(item.image, item.extraImages), item.autoScrollSeconds);
+    for (const item of this.moodBoard()) advance(`mood-${item.id}`, this.contentImages(item.src, item.extraImages), item.autoScrollSeconds);
+    for (const item of this.technicalities()) advance(`tech-${item.id}`, this.contentImages(item.image, item.extraImages), item.autoScrollSeconds);
+    for (const item of this.directorsNotesImages()) advance(`director-${item.id}`, this.contentImages(item.src, item.extraImages), item.autoScrollSeconds);
+    for (const item of this.articles()) advance(`article-${item.id}`, this.contentImages(item.image, item.extraImages), item.autoScrollSeconds);
+    advance('about', this.contentImages(this.aboutMe().photo, this.aboutMe().extraImages), this.aboutMe().autoScrollSeconds);
+    if (changed) this.charSlides.set(nextChars);
+    if (changed) this.imageSlides.set(nextImages);
   }
 
   /* =========================================================
@@ -694,7 +721,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /* ---------- EPISODES ---------- */
   addEpisode(): void {
-    this.episodes.update(list => [...list, { id: this.nextId(), title: '', text: '', image: '', extraImages: [] }]);
+    this.episodes.update(list => [...list, { id: this.nextId(), title: '', text: '', image: '', extraImages: [], autoScrollSeconds: 4 }]);
   }
   removeEpisode(id: number): void {
     this.episodes.update(list => list.filter(ep => ep.id !== id));
@@ -718,7 +745,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /* ---------- TECHNICALITIES ---------- */
   addTechItem(): void {
-    this.technicalities.update(list => [...list, { id: this.nextId(), image: '', extraImages: [], heading: '', text: '', links: [] }]);
+    this.technicalities.update(list => [...list, { id: this.nextId(), image: '', extraImages: [], autoScrollSeconds: 4, heading: '', text: '', links: [] }]);
   }
   removeTechItem(id: number): void {
     this.technicalities.update(list => list.filter(t => t.id !== id));
@@ -731,14 +758,14 @@ export class App implements AfterViewChecked, OnDestroy {
   }
 
   addMoodImage(): void {
-    this.moodBoard.update(list => [...list, { id: this.nextId(), src: '', caption: '' }]);
+    this.moodBoard.update(list => [...list, { id: this.nextId(), src: '', caption: '', extraImages: [], autoScrollSeconds: 4 }]);
   }
   removeMoodImage(id: number): void {
     this.moodBoard.update(list => list.filter(item => item.id !== id));
   }
 
   addDirectorsImage(): void {
-    this.directorsNotesImages.update(list => [...list, { id: this.nextId(), src: '', caption: '' }]);
+    this.directorsNotesImages.update(list => [...list, { id: this.nextId(), src: '', caption: '', extraImages: [], autoScrollSeconds: 4 }]);
   }
   removeDirectorsImage(id: number): void {
     this.directorsNotesImages.update(list => list.filter(item => item.id !== id));
@@ -746,7 +773,7 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /* ---------- DIRECTOR'S NOTES ---------- */
   addArticle(): void {
-    this.articles.update(list => [...list, { id: this.nextId(), title: '', description: '', link: '', image: '' }]);
+    this.articles.update(list => [...list, { id: this.nextId(), title: '', description: '', link: '', image: '', extraImages: [], autoScrollSeconds: 4 }]);
   }
   removeArticle(id: number): void {
     this.articles.update(list => list.filter(item => item.id !== id));
