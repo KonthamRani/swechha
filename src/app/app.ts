@@ -101,6 +101,7 @@ export class App implements AfterViewChecked, OnDestroy {
   scrollProgress = signal(0);
   glitchActive = signal(false);
   logoDocked = signal(false);
+  introDismissed = signal(false);
 
 
   /** Large ambient backdrop image (section 10 of the spec). Falls back to a bundled asset until an admin overrides it. */
@@ -378,6 +379,10 @@ export class App implements AfterViewChecked, OnDestroy {
     const scrollTop = window.scrollY || doc.scrollTop;
     const max = doc.scrollHeight - doc.clientHeight;
     this.scrollProgress.set(max > 0 ? Math.min(100, (scrollTop / max) * 100) : 0);
+
+    // The glitch title is the first post-login screen.
+    // A small scroll starts the cinematic transition into Section 01.
+    this.introDismissed.set(scrollTop > Math.max(24, window.innerHeight * 0.06));
   }
 
   @HostListener('window:resize')
@@ -400,6 +405,7 @@ export class App implements AfterViewChecked, OnDestroy {
     this.isLoggedIn.set(false);
     this.isLoading.set(false);
     this.logoDocked.set(false);
+    this.introDismissed.set(false);
     this.isAdmin = false;
     this.username = '';
     this.password = '';
@@ -422,6 +428,7 @@ export class App implements AfterViewChecked, OnDestroy {
    */
   private startLoadingSequence(): void {
     this.isLoading.set(true);
+    this.introDismissed.set(false);
     this.loadingProgress.set(0);
     this.bootLines.set([]);
     this.loadingStatusText.set(this.loadingStatusSteps[0]);

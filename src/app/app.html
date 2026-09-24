@@ -66,7 +66,27 @@
       <div class="scroll-progress-fill" [style.width.%]="scrollProgress()"></div>
     </div>
 
-    <header class="top-hud" [class.docked]="logoDocked()">
+    <section class="intro-screen" [class.intro-exit]="introDismissed()" aria-label="SWECHHA introduction">
+      <div class="intro-glitch-grid" aria-hidden="true"></div>
+      <div class="intro-vignette" aria-hidden="true"></div>
+
+      <div class="intro-content">
+        <div class="intro-label">SECURE CHANNEL // ACCESS GRANTED</div>
+
+        <div class="glitch-word" data-text="SWECHHA" aria-label="SWECHHA">
+          <span>SWECHHA</span>
+        </div>
+
+        <p class="intro-subtitle">THE ARCHIVE IS OPEN</p>
+
+        <div class="intro-scroll-cue" [class.hide]="introDismissed()">
+          <span class="scroll-line"></span>
+          <span>SCROLL TO ENTER</span>
+        </div>
+      </div>
+    </section>
+
+    <header class="top-hud" *ngIf="introDismissed()" [class.docked]="logoDocked()">
       <span class="hud-title">
         SWECHHA // <b [class.is-admin]="isAdmin">{{ isAdmin ? 'ADMIN ACCESS' : 'VIEWER ACCESS' }}</b>
       </span>
