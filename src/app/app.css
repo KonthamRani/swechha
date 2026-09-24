@@ -434,7 +434,23 @@ button, input, textarea, select {
 }
 .hud-title b { color: var(--green); font-weight: 700; }
 .hud-title b.is-admin { color: var(--red); text-shadow: 0 0 8px var(--red); }
-.hud-actions { display: flex; align-items: center; gap: 8px; }
+.hud-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.loading-time-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.loading-time-field .edit-input {
+  width: 64px;
+  margin: 0;
+  padding: 7px 8px;
+  text-align: center;
+}
 
 /* =========================================================
    POST-LOGIN INTRO / GLITCH TITLE
@@ -828,6 +844,11 @@ button, input, textarea, select {
   line-height: 1.7;
   color: rgba(255, 247, 237, 0.92);
 }
+.terminal-card .edit-textarea {
+  display: block;
+  min-height: 132px;
+  resize: vertical;
+}
 
 .edit-fab {
   position: absolute;
@@ -1078,6 +1099,9 @@ button, input, textarea, select {
 .link-edit-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; min-width: 0; }
 .link-edit-row .edit-input { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
 .link-edit-row .btn { flex: 0 0 auto; }
+.image-edit-row { display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: 6px; }
+.image-edit-row .edit-input { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+.image-edit-row .btn { flex: 0 0 auto; }
 .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 
 /* =========================================================
@@ -1218,6 +1242,9 @@ button, input, textarea, select {
 @media (max-width: 640px) {
   .top-hud { flex-direction: row; }
   .hud-title { font-size: 0.64rem; padding: 7px 10px; }
+  .hud-actions { gap: 5px; }
+  .loading-time-field span { display: none; }
+  .loading-time-field .edit-input { width: 54px; }
   .content-slide { gap: 16px; }
   .card-image-wrap.small-image {
     float: none;
@@ -1345,7 +1372,8 @@ img.zoomable { cursor: zoom-in; }
 .tile-interval { position: relative; z-index: 3; margin: 8px; }
 
 @media (max-width: 640px) {
-  .link-edit-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .link-edit-row,
+  .image-edit-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
   .about-layout { gap: 16px; }
   .about-layout .card-image-wrap.round { width: min(180px, 60vw); }
   .article-card .link-edit-row .edit-input { width: 100%; margin-left: 0; margin-right: 0; }

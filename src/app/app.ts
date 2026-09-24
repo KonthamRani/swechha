@@ -113,6 +113,8 @@ export class App implements AfterViewChecked, OnDestroy {
 
   /* ---------- LIGHTBOX + CHARACTER CAROUSEL ---------- */
   lightbox = signal<{ images: string[]; index: number; alt: string } | null>(null);
+  private lightboxTouchStartX: number | null = null;
+  private ignoreLightboxClick = false;
   charSlides = signal<Record<number, number>>({});
   imageSlides = signal<Record<string, number>>({});
   hoveredCharId: number | null = null;
@@ -588,6 +590,28 @@ document.body.style.overflow = '';
     if (!lb || lb.images.length < 2) return;
     const index = (lb.index + dir + lb.images.length) % lb.images.length;
     this.lightbox.set({ ...lb, index });
+  }
+
+  startLightboxSwipe(event: TouchEvent): void {
+    this.lightboxTouchStartX = event.changedTouches[0]?.clientX ?? null;
+  }
+
+  endLightboxSwipe(event: TouchEvent): void {
+    if (this.lightboxTouchStartX === null) return;
+    const endX = event.changedTouches[0]?.clientX ?? this.lightboxTouchStartX;
+    const distance = endX - this.lightboxTouchStartX;
+    this.lightboxTouchStartX = null;
+    if (Math.abs(distance) < 45) return;
+    this.ignoreLightboxClick = true;
+    this.stepLightbox(distance < 0 ? 1 : -1);
+  }
+
+  handleLightboxBackdropClick(): void {
+    if (this.ignoreLightboxClick) {
+      this.ignoreLightboxClick = false;
+      return;
+    }
+    this.closeImage();
   }
 
   /* =========================================================
