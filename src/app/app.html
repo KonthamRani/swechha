@@ -1,4 +1,4 @@
-<div class="swecha-root">
+<div class="swecha-root" [class.auth-locked]="!isLoggedIn() || isLoading()">
   <!-- Turns a dark image background transparent so the icon renders as a clean logo shape -->
   <svg class="logo-filter-defs" width="0" height="0" aria-hidden="true" focusable="false">
     <defs>
@@ -415,7 +415,12 @@
         </div>
       </section>
 
-      <section class="content-slide" id="about">
+      <section class="content-slide final-page" id="about">
+        <div class="final-error-burst" aria-hidden="true">404</div>
+        <div class="final-rgb-flash" aria-hidden="true"></div>
+        <div class="final-tear-field" aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </div>
         <div class="section-heading"><div class="section-tag">08 // ABOUT ME</div><button class="section-edit" *ngIf="isAdmin" (click)="toggleEdit('about')">{{ editing['about'] ? 'SAVE' : 'EDIT' }}</button></div>
 
         <div class="about-layout">
@@ -463,11 +468,24 @@
           </div>
         </div>
       </section>
+
+      <section class="content-slide failure-page" id="system-failure" aria-label="System failure">
+        <div class="failure-scanlines" aria-hidden="true"></div>
+        <div class="failure-rgb" aria-hidden="true"></div>
+         <img class="failure-art" src="assets/swechha-final-glitch.png" alt="" aria-hidden="true" />
+          <div class="failure-wipe-line" aria-hidden="true"></div>
+          <div class="failure-data-rain" aria-hidden="true">
+            <span style="--x: 4%; --fall-delay: 0s;">SWECHHA</span>
+            <span style="--x: 17%; --fall-delay: 1.4s;">404</span>
+            <span style="--x: 31%; --fall-delay: 2.2s;">ERROR</span>
+            <span style="--x: 48%; --fall-delay: 0.8s;">SIGNAL</span>
+            <span style="--x: 66%; --fall-delay: 2.8s;">SWECHHA</span>
+            <span style="--x: 82%; --fall-delay: 1.8s;">404</span>
+            <span style="--x: 94%; --fall-delay: 3.2s;">LOST</span>
+          </div>
+      </section>
     </main>
 
-    <footer class="site-footer">
-      <p>SWECHHA SYSTEM // END OF TRANSMISSION</p>
-    </footer>
   </ng-container>
 
   <!-- IMAGE MODAL (lightbox) -->

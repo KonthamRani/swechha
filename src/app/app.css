@@ -30,7 +30,12 @@
   position: relative;
   min-height: 100svh;
   background: radial-gradient(circle at 50% 45%, rgba(255, 0, 60, 0.1), transparent 40%), #000;
-  overflow-x: hidden;
+  overflow: hidden;
+}
+.swecha-root.auth-locked {
+  height: 100svh;
+  min-height: 100svh;
+  overflow: hidden;
 }
 
 button, input, textarea, select {
@@ -777,7 +782,7 @@ button, input, textarea, select {
   transform: translateY(28px);
   transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.content-slide.is-visible { opacity: 1; transform: translateY(0); }
+.content-slide.is-visible { opacity: 0.7; transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) {
   .content-slide { opacity: 1; transform: none; transition: none; }
 }
@@ -911,7 +916,7 @@ button, input, textarea, select {
   padding: 16px;
   border: 1px solid rgba(255, 22, 61, 0.24);
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(10, 0, 4, 0.6), rgba(0, 0, 0, 0.4));
+  background: linear-gradient(180deg, #0a000499, #0006);
   backdrop-filter: blur(8px);
   box-shadow: 0 0 26px rgba(255, 22, 61, 0.1);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
@@ -1185,6 +1190,254 @@ button, input, textarea, select {
 .link-row { min-width: 0; }
 .tech-link { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 
+/* Final-page failure state, adapted from the reference glitch slide. */
+.final-page { isolation: isolate; overflow: hidden; }
+.final-page > :not(.final-error-burst):not(.final-rgb-flash):not(.final-tear-field) {
+  position: relative;
+  z-index: 4;
+}
+.final-error-burst,
+.final-rgb-flash,
+.final-tear-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.final-error-burst {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 22, 61, 0.16);
+  font-size: clamp(5rem, 28vw, 16rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 26px rgba(255, 22, 61, 0.7), 0 0 60px rgba(255, 0, 79, 0.4);
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+.final-rgb-flash {
+  z-index: 2;
+  opacity: 0;
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgba(255, 0, 55, 0.3) 18% 20%, transparent 20% 68%, rgba(0, 247, 255, 0.24) 68% 70%, transparent 70%),
+    repeating-linear-gradient(to bottom, transparent 0 14px, rgba(255, 255, 255, 0.08) 15px, transparent 17px);
+  mix-blend-mode: screen;
+}
+.final-tear-field { z-index: 3; overflow: hidden; opacity: 0; }
+.final-tear-field i {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: var(--tear-y, 24%);
+  height: var(--tear-h, 8px);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), rgba(255, 0, 39, 0.58), rgba(0, 247, 255, 0.3), transparent);
+  filter: drop-shadow(0 0 8px rgba(255, 0, 39, 0.8));
+  transform: translateX(-24px);
+}
+.final-tear-field i:nth-child(2) { --tear-y: 43%; --tear-h: 5px; --tear-shift: 32px; --tear-delay: 0.18s; }
+.final-tear-field i:nth-child(3) { --tear-y: 67%; --tear-h: 12px; --tear-shift: -18px; --tear-delay: 0.36s; }
+.final-tear-field i:nth-child(4) { --tear-y: 82%; --tear-h: 4px; --tear-shift: 24px; --tear-delay: 0.52s; }
+.final-page.is-visible .final-error-burst { animation: finalErrorBurst 2.4s steps(2, end) infinite; }
+.final-page.is-visible .final-rgb-flash { animation: finalRgbFlash 3.1s steps(2, end) infinite; }
+.final-page.is-visible .final-tear-field { opacity: 1; }
+.final-page.is-visible .final-tear-field i { animation: finalTearMove 1s var(--tear-delay, 0s) steps(2, end) infinite; }
+@keyframes finalErrorBurst {
+  0%, 82%, 100% { opacity: 0; transform: scale(0.86); }
+  83% { opacity: 0.9; transform: scale(1.02) skewX(-5deg); }
+  86% { opacity: 0.2; transform: scale(0.94) skewX(4deg); }
+  89% { opacity: 0.62; transform: scale(1.12); }
+}
+@keyframes finalRgbFlash {
+  0%, 70%, 100% { opacity: 0; transform: translateX(0); }
+  72% { opacity: 0.65; transform: translateX(-4px); }
+  74% { opacity: 0.16; transform: translateX(5px); }
+}
+@keyframes finalTearMove {
+  0% { transform: translateX(-24px) scaleX(0.8); opacity: 0; }
+  20% { opacity: 0.9; }
+  100% { transform: translateX(var(--tear-shift, 32px)) scaleX(1.25); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .final-page.is-visible .final-error-burst,
+  .final-page.is-visible .final-rgb-flash,
+  .final-page.is-visible .final-tear-field i { animation: none; }
+  .final-page.is-visible .final-error-burst { opacity: 0.12; }
+  .final-page.is-visible .final-tear-field { opacity: 0.35; }
+}
+
+/* Dedicated terminal-failure page that follows About Me. */
+.failure-page {
+  min-height: 100svh;
+  max-width: none;
+  padding: 24px clamp(18px, 6vw, 80px) 60px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #020000;
+}
+.failure-page > * { position: relative; z-index: 2; }
+.failure-page .failure-art {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0 !important;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+}
+.failure-page.is-visible .failure-art {
+  animation: failureArtGlitch 0.72s steps(2, end) infinite;
+  filter: saturate(1.45) contrast(1.18) brightness(1.04);
+}
+.failure-scanlines,
+.failure-rgb {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1 !important;
+}
+.failure-scanlines {
+  opacity: 0.72;
+  background: repeating-linear-gradient(to bottom, transparent 0 18px, rgba(255, 22, 61, 0.28) 19px 23px, transparent 24px 38px);
+  mix-blend-mode: screen;
+  animation: failureScan 2.8s steps(2, end) infinite;
+}
+.failure-wipe-line {
+  position: absolute !important;
+  inset: 0;
+  z-index: 3 !important;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+.failure-wipe-line::before,
+.failure-wipe-line::after {
+  content: "";
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  height: clamp(8px, 1.4vw, 18px);
+  background: linear-gradient(90deg, transparent, rgba(255, 22, 61, 0.72) 30%, rgba(255, 247, 237, 0.26) 50%, rgba(0, 247, 255, 0.5) 72%, transparent);
+  filter: blur(0.4px) drop-shadow(0 0 12px rgba(255, 22, 61, 0.9));
+}
+.failure-wipe-line::before { top: 22%; }
+.failure-wipe-line::after { top: 68%; }
+.failure-page.is-visible .failure-wipe-line { opacity: 1; animation: failureWipeAppear 2.2s steps(2, end) infinite; }
+.failure-page.is-visible .failure-wipe-line::before { animation: failureHorizontalSweep 2.7s ease-in-out infinite; }
+.failure-page.is-visible .failure-wipe-line::after { animation: failureHorizontalSweep 3.8s ease-in-out infinite reverse; }
+.failure-data-rain {
+  position: absolute !important;
+  inset: 0;
+  z-index: 4 !important;
+  overflow: hidden;
+  pointer-events: none;
+}
+.failure-data-rain span {
+  position: absolute;
+  top: -18vh;
+  left: var(--x);
+  color: rgba(255, 22, 61, 0.72);
+  font-size: clamp(0.62rem, 1.6vw, 0.9rem);
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 10px currentColor;
+  writing-mode: vertical-rl;
+  opacity: 0;
+  animation: failureDataDrop 5.2s var(--fall-delay, 0s) linear infinite;
+}
+.failure-rgb {
+  opacity: 0.55;
+  background: repeating-linear-gradient(to bottom, transparent 0 7px, rgba(0, 247, 255, 0.18) 8px 10px, transparent 11px 25px);
+  mix-blend-mode: screen;
+  animation: failureRgb 1.2s steps(2, end) infinite;
+}
+.failure-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 64svh;
+  gap: 10px;
+  text-align: center;
+}
+.failure-logo {
+  width: min(220px, 46vw);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 22, 61, 0.55);
+  border-radius: 28%;
+  overflow: hidden;
+  box-shadow: 0 0 34px rgba(255, 22, 61, 0.55), 0 0 18px rgba(0, 247, 255, 0.28);
+  animation: failureLogo 0.7s steps(2, end) infinite;
+}
+.failure-logo img { width: 100%; height: 100%; object-fit: cover; filter: saturate(1.6) contrast(1.2); }
+.failure-status,
+.failure-terminated {
+  margin: 0;
+  color: rgba(255, 247, 237, 0.78);
+  font-size: clamp(0.72rem, 2.8vw, 1.05rem);
+  letter-spacing: 0.14em;
+  text-shadow: 2px 0 var(--red), -2px 0 var(--cyan);
+}
+.failure-progress { display: flex; align-items: center; gap: 8px; width: min(300px, 78vw); }
+.failure-progress span { height: 28px; flex: 1; border: 2px solid rgba(255, 22, 61, 0.55); background: repeating-linear-gradient(90deg, var(--red) 0 6px, rgba(255, 22, 61, 0.22) 7px 10px); box-shadow: 0 0 14px rgba(255, 22, 61, 0.42); }
+.failure-progress b { color: var(--red); font-size: 0.72rem; }
+.failure-alert {
+  display: grid;
+  gap: 3px;
+  width: min(250px, 72vw);
+  padding: 14px;
+  border: 1px solid rgba(255, 22, 61, 0.52);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.66);
+  color: var(--red);
+  text-align: left;
+  box-shadow: 0 0 24px rgba(255, 22, 61, 0.2);
+}
+.failure-alert strong { font-size: 1rem; }
+.failure-alert span,
+.failure-alert small { color: rgba(255, 247, 237, 0.62); font-size: 0.62rem; letter-spacing: 0.1em; }
+.failure-terminal {
+  width: min(640px, 100%);
+  margin: auto;
+  padding: 16px 20px 20px;
+  border: 1px solid rgba(255, 22, 61, 0.5);
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.68);
+  box-shadow: 0 0 36px rgba(255, 22, 61, 0.2);
+}
+.failure-terminal p { margin: 0 0 12px; color: var(--green); letter-spacing: 0.14em; }
+.failure-terminal > span { display: block; color: rgba(255, 247, 237, 0.86); font-family: var(--body-font); line-height: 1.6; }
+.failure-terminal-bar { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.failure-terminal-bar i { height: 8px; flex: 1; background: var(--hot); box-shadow: 0 0 12px var(--hot); }
+.failure-terminal-bar b { color: var(--hot); }
+@keyframes failureScan { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(14px); } }
+@keyframes failureRgb { 0%, 78%, 100% { opacity: 0.25; transform: translateX(0); } 80% { opacity: 0.8; transform: translateX(-7px); } 82% { transform: translateX(6px); } }
+@keyframes failureWipeAppear { 0%, 18%, 100% { opacity: 0; } 19%, 30% { opacity: 0.9; } 31%, 72% { opacity: 0.25; } 73%, 80% { opacity: 0.8; } }
+@keyframes failureHorizontalSweep { 0% { transform: translateY(-14vh) scaleX(0.75); opacity: 0; } 25% { opacity: 0.95; } 100% { transform: translateY(96vh) scaleX(1.18); opacity: 0; } }
+@keyframes failureDataDrop { 0% { transform: translateY(-10vh); opacity: 0; } 16% { opacity: 0.78; } 100% { transform: translateY(132vh); opacity: 0; } }
+@keyframes failureLogo { 0%, 84%, 100% { transform: translate(0) skew(0); } 86% { transform: translate(-5px, 2px) skew(-4deg); } 88% { transform: translate(4px, -1px) skew(3deg); } }
+@keyframes failureArtGlitch {
+  0%, 100% { transform: translate(0, 0) scale(1.01); clip-path: inset(0); filter: saturate(1.35) contrast(1.12) brightness(1.02); }
+  18% { transform: translate(-2px, 1px) scale(1.012); clip-path: inset(0 0 72% 0); }
+  19% { transform: translate(3px, -1px) scale(1.01); clip-path: inset(72% 0 0 0); }
+  20% { clip-path: inset(0); }
+  44% { transform: translate(2px, 0) scale(1.018); filter: saturate(1.9) contrast(1.3) brightness(1.12) hue-rotate(-8deg); }
+  45% { transform: translate(-4px, 2px) scale(1.012); clip-path: inset(34% 0 48% 0); }
+  47% { clip-path: inset(0); }
+  72% { transform: translate(1px, -2px) scale(1.02); clip-path: inset(78% 0 8% 0); }
+  74% { transform: translate(-2px, 1px) scale(1.014); clip-path: inset(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .failure-scanlines,
+  .failure-rgb,
+  .failure-wipe-line,
+  .failure-data-rain,
+  .failure-wipe-line::before,
+  .failure-wipe-line::after,
+  .failure-data-rain span,
+  .failure-logo,
+  .failure-page.is-visible .failure-art { animation: none; }
+}
+
 /* =========================================================
    ADMIN CONTROLS BAR
    ========================================================= */
@@ -1235,6 +1488,29 @@ button, input, textarea, select {
 .glass-card h3,
 .tech-copy h3,
 .article-card h5 { width: fit-content; }
+
+/* Keep text panels opaque enough to read over the animated background. */
+.content-slide.is-visible { opacity: 1; }
+.terminal-card,
+.section-heading,
+.tech-row,
+.article-card {
+  background-color: rgba(0, 0, 0, 0.78);
+}
+.glass-card {
+  background: linear-gradient(180deg, rgba(10, 0, 4, 0.84), rgba(0, 0, 0, 0.76));
+}
+.section-tag,
+.sub-heading,
+.glass-card h3,
+.glass-card p,
+.tech-copy h3,
+.tech-copy p,
+.article-card h5,
+.article-card p,
+.about-copy .body-text {
+  background-color: rgba(0, 0, 0, 0.82);
+}
 
 /* =========================================================
    RESPONSIVE TWEAKS
