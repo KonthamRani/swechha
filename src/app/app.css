@@ -1558,8 +1558,9 @@ img.zoomable { cursor: zoom-in; }
   justify-content: center;
   gap: 12px;
   padding: 24px 12px;
-  /* background: rgba(0, 0, 0, 0.92); */
-  /* backdrop-filter: blur(6px); */
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   animation: lightboxIn 0.2s ease-out;
 }
 @keyframes lightboxIn { from { opacity: 0; } to { opacity: 1; } }
