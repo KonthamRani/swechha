@@ -221,7 +221,7 @@ button, input, textarea, select {
   width: min(70vw, 900px);
   height: auto;
   opacity: 0.07;
-  filter: blur(6px) saturate(1.4);
+  /* filter: blur(6px) saturate(1.4); */
   animation: adminLogoDrift 26s ease-in-out infinite;
 }
 @keyframes adminLogoDrift {
@@ -836,8 +836,8 @@ button, input, textarea, select {
   padding: clamp(20px, 4vw, 32px);
   border: 1px solid rgba(255, 22, 61, 0.28);
   border-radius: 20px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
+  /* background: rgba(0, 0, 0, 0.4); */
+  /* backdrop-filter: blur(10px); */
   box-shadow: 0 0 34px rgba(255, 22, 61, 0.14), inset 0 0 22px rgba(255, 22, 61, 0.05);
 }
 .terminal-card.wide { width: 100%; }
@@ -916,8 +916,8 @@ button, input, textarea, select {
   padding: 16px;
   border: 1px solid rgba(255, 22, 61, 0.24);
   border-radius: 20px;
-  background: linear-gradient(180deg, #0a000499, #0006);
-  backdrop-filter: blur(8px);
+  /* background: linear-gradient(180deg, #0a000499, #0006); */
+  /* backdrop-filter: blur(8px); */
   box-shadow: 0 0 26px rgba(255, 22, 61, 0.1);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
@@ -1064,7 +1064,7 @@ button, input, textarea, select {
   padding: 18px;
   border: 1px solid rgba(255, 22, 61, 0.2);
   border-radius: 20px;
-  background: rgba(0, 0, 0, 0.32);
+  /* background: rgba(0, 0, 0, 0.32); */
 }
 @media (min-width: 720px) {
   .tech-row:has(.card-image-wrap) { grid-template-columns: 160px 1fr; align-items: start; }
@@ -1128,7 +1128,7 @@ button, input, textarea, select {
   border: 1px solid rgba(255, 22, 61, 0.22);
   border-radius: 16px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.36);
+  /* background: rgba(0, 0, 0, 0.36); */
   padding-bottom: 14px;
 }
 .article-card img {
@@ -1477,7 +1477,7 @@ button, input, textarea, select {
 .article-card h5,
 .article-card p,
 .about-copy .body-text {
-  background: rgba(0, 0, 0, 0.62);
+  /* background: rgba(0, 0, 0, 0.62); */
   border: 1px solid rgba(255, 247, 237, 0.08);
   border-radius: 10px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.24);
@@ -1495,10 +1495,10 @@ button, input, textarea, select {
 .section-heading,
 .tech-row,
 .article-card {
-  background-color: rgba(0, 0, 0, 0.78);
+  /* background-color: rgba(0, 0, 0, 0.78); */
 }
 .glass-card {
-  background: linear-gradient(180deg, rgba(10, 0, 4, 0.84), rgba(0, 0, 0, 0.76));
+  /* background: linear-gradient(180deg, rgba(10, 0, 4, 0.84), rgba(0, 0, 0, 0.76)); */
 }
 .section-tag,
 .sub-heading,
@@ -1509,7 +1509,7 @@ button, input, textarea, select {
 .article-card h5,
 .article-card p,
 .about-copy .body-text {
-  background-color: rgba(0, 0, 0, 0.82);
+  /* background-color: rgba(0, 0, 0, 0.82); */
 }
 
 /* =========================================================
@@ -1558,8 +1558,8 @@ img.zoomable { cursor: zoom-in; }
   justify-content: center;
   gap: 12px;
   padding: 24px 12px;
-  background: rgba(0, 0, 0, 0.92);
-  backdrop-filter: blur(6px);
+  /* background: rgba(0, 0, 0, 0.92); */
+  /* backdrop-filter: blur(6px); */
   animation: lightboxIn 0.2s ease-out;
 }
 @keyframes lightboxIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1592,7 +1592,7 @@ img.zoomable { cursor: zoom-in; }
 .lightbox-close,
 .lightbox-nav {
   border: 1px solid rgba(255, 22, 61, 0.45);
-  background: rgba(0, 0, 0, 0.6);
+  /* background: rgba(0, 0, 0, 0.6); */
   color: var(--ink);
   cursor: pointer;
   border-radius: 50%;
