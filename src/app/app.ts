@@ -279,12 +279,6 @@ export class App implements AfterViewChecked, OnDestroy {
       if (remote.backgroundImage?.url) this.backgroundImage.set(remote.backgroundImage);
       if (remote.loadingSeconds !== undefined) this.loadingSeconds.set(this.clampLoading(remote.loadingSeconds));
     });
-
-    effect(() => {
-      if (this.content.ready() && !this.content.content()) {
-        this.content.seedIfEmpty(this.snapshotContent());
-      }
-    });
   }
 
   private snapshotContent(): SwechhaContent {

@@ -1,6 +1,11 @@
 import { Injectable, signal } from '@angular/core';
-import { getFirestore, doc, onSnapshot, setDoc, Firestore } from 'firebase/firestore';
-// import { getFirebaseApp } from './firebase-app';
+import {
+  getFirestore,
+  doc,
+  onSnapshot,
+  setDoc,
+  Firestore
+} from 'firebase/firestore';
 
 import type {
   Episode,
@@ -11,38 +16,8 @@ import type {
   AboutLink,
   ImageRef
 } from './app';
+
 import { getFirebaseApp } from './firebase-app';
-
-/* =========================================================
-   FIREBASE PROJECT CONFIG lives in firebase-app.ts now, shared
-   with StorageService, so init order between the two services
-   never matters.
-   ========================================================= */
-
-/* Firestore rules (Firebase console > Firestore > Rules):
-
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /swechha/site {
-         allow read: if true;
-         allow write: if true; // tighten once real auth is added — see SETUP.md
-       }
-     }
-   }
-
-   Storage rules (Firebase console > Storage > Rules):
-
-   rules_version = '2';
-   service firebase.storage {
-     match /b/{bucket}/o {
-       match /swechha/{allPaths=**} {
-         allow read: if true;
-         allow write: if true;
-       }
-     }
-   }
-*/
 
 export interface SwechhaContent {
   logline: string;
@@ -54,8 +29,16 @@ export interface SwechhaContent {
   directorsNotesText: string;
   directorsNotesImages: MoodImage[];
   articles: Article[];
-  aboutMe: { photo: string; bio: string; links: AboutLink[] };
-  /** Large blurred backdrop image behind the whole site. Admin-editable, same as any other image. */
+
+  aboutMe: {
+    photo: string;
+    photoPath?: string;
+    extraImages?: string[];
+    autoScrollSeconds?: number;
+    bio: string;
+    links: AboutLink[];
+  };
+
   backgroundImage?: ImageRef;
   loadingSeconds?: number;
 }
@@ -64,40 +47,130 @@ const CONTENT_DOC_PATH = ['swechha', 'site'] as const;
 
 @Injectable({ providedIn: 'root' })
 export class ContentService {
-  private db: Firestore;
 
-  readonly content = signal<SwechhaContent | null>(null);
-  readonly ready = signal(false);
-  readonly error = signal<string | null>(null);
+  private readonly db: Firestore =
+    getFirestore(getFirebaseApp());
+
+  readonly content =
+    signal<SwechhaContent | null>(null);
+
+  readonly ready =
+    signal(false);
+
+  readonly documentExists =
+    signal<boolean | null>(null);
+
+  readonly error =
+    signal<string | null>(null);
 
   constructor() {
-    this.db = getFirestore(getFirebaseApp());
 
-    const docRef = doc(this.db, ...CONTENT_DOC_PATH);
+    const docRef = doc(
+      this.db,
+      ...CONTENT_DOC_PATH
+    );
+
     onSnapshot(
       docRef,
-      snap => {
-        if (snap.exists()) {
-          this.content.set(snap.data() as SwechhaContent);
+
+      snapshot => {
+
+        this.error.set(null);
+
+        if (snapshot.exists()) {
+
+          this.documentExists.set(true);
+
+          this.content.set(
+            snapshot.data() as SwechhaContent
+          );
+
+        } else {
+
+          // The request succeeded and Firestore
+          // explicitly confirmed the document does not exist.
+          //
+          // DO NOT automatically write default data here.
+
+          console.warn(
+            'ContentService: swechha/site does not exist.'
+          );
+
+          this.documentExists.set(false);
+          this.content.set(null);
         }
+
         this.ready.set(true);
       },
-      err => {
-        console.error('ContentService: snapshot listener failed', err);
-        this.error.set(err.message);
+
+      error => {
+
+        /*
+         IMPORTANT:
+         A network/DNS/permission error does NOT mean
+         that the Firestore document is empty.
+
+         Therefore never seed or overwrite data here.
+        */
+
+        console.error(
+          'ContentService: snapshot listener failed',
+          error
+        );
+
+        this.error.set(error.message);
+
+        this.documentExists.set(null);
+
+        /*
+         ready=true only means the initial attempt finished.
+
+         documentExists=null tells us we DON'T KNOW
+         whether Firestore contains the document.
+        */
         this.ready.set(true);
       }
     );
   }
 
-  async save(partial: Partial<SwechhaContent>): Promise<void> {
-    const docRef = doc(this.db, ...CONTENT_DOC_PATH);
-    await setDoc(docRef, partial, { merge: true });
-  }
+  /**
+   * Saves ONLY the provided fields.
+   *
+   * merge:true prevents unrelated top-level
+   * fields from being replaced.
+   */
+  async save(
+    partial: Partial<SwechhaContent>
+  ): Promise<void> {
 
-  async seedIfEmpty(initial: SwechhaContent): Promise<void> {
-    if (this.content()) return;
-    const docRef = doc(this.db, ...CONTENT_DOC_PATH);
-    await setDoc(docRef, initial, { merge: true });
+    if (
+      !partial ||
+      Object.keys(partial).length === 0
+    ) {
+      return;
+    }
+
+    const docRef = doc(
+      this.db,
+      ...CONTENT_DOC_PATH
+    );
+
+    try {
+
+      await setDoc(
+        docRef,
+        partial,
+        { merge: true }
+      );
+
+    } catch (error) {
+
+      console.error(
+        'ContentService: save failed',
+        error
+      );
+
+      throw error;
+    }
   }
 }
