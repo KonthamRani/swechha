@@ -912,6 +912,7 @@ button, input, textarea, select {
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
   padding: 16px;
   border: 1px solid rgba(255, 22, 61, 0.24);
@@ -997,13 +998,14 @@ button, input, textarea, select {
 }
 .mood-tile img {
   width: 100%;
-  height: 80vh;
-  object-fit: cover;
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
   display: block;
   transition: transform 0.4s ease;
 }
-.mood-tile.portrait-tile img { height: 80vh; }
-.mood-tile:hover img { transform: scale(1.06); }
+.mood-tile.portrait-tile img { height: auto; }
+.mood-tile:hover img { transform: scale(1.02); }
 .mood-tile figcaption {
   position: absolute;
   left: 0;
@@ -1537,7 +1539,7 @@ button, input, textarea, select {
     max-width: none;
     margin-inline: auto;
   }
-  .mood-tile img { height: 40vh; min-height: 220px; }
+  .mood-tile img { height: auto; min-height: 0; max-height: 70vh; }
 }
 
 @media (hover: none) and (pointer: coarse) {
